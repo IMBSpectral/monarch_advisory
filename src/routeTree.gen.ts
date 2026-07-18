@@ -10,28 +10,28 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as AccountingBalanceSheetRouteImport } from './routes/accounting.balance-sheet'
-import { Route as AccountingCoaRouteImport } from './routes/accounting.coa'
-import { Route as AccountingGstRouteImport } from './routes/accounting.gst'
-import { Route as AccountingJournalRouteImport } from './routes/accounting.journal'
-import { Route as AccountingPnlRouteImport } from './routes/accounting.pnl'
-import { Route as AiIndexRouteImport } from './routes/ai.index'
-import { Route as AutomationIndexRouteImport } from './routes/automation.index'
-import { Route as BankingIndexRouteImport } from './routes/banking.index'
-import { Route as BankingConnectRouteImport } from './routes/banking.connect'
-import { Route as BankingReconcileRouteImport } from './routes/banking.reconcile'
-import { Route as BankingReviewRouteImport } from './routes/banking.review'
-import { Route as CrmIndexRouteImport } from './routes/crm.index'
-import { Route as InventoryIndexRouteImport } from './routes/inventory.index'
-import { Route as InventoryWarehousesRouteImport } from './routes/inventory.warehouses'
-import { Route as PosIndexRouteImport } from './routes/pos.index'
-import { Route as PurchasesBillsRouteImport } from './routes/purchases.bills'
-import { Route as PurchasesVendorsRouteImport } from './routes/purchases.vendors'
-import { Route as ReportsIndexRouteImport } from './routes/reports.index'
-import { Route as SalesIndexRouteImport } from './routes/sales.index'
-import { Route as SalesCustomersRouteImport } from './routes/sales.customers'
-import { Route as SalesInvoicesRouteImport } from './routes/sales.invoices'
 import { Route as SettingsIndexRouteImport } from './routes/settings.index'
+import { Route as SalesIndexRouteImport } from './routes/sales.index'
+import { Route as ReportsIndexRouteImport } from './routes/reports.index'
+import { Route as PosIndexRouteImport } from './routes/pos.index'
+import { Route as InventoryIndexRouteImport } from './routes/inventory.index'
+import { Route as CrmIndexRouteImport } from './routes/crm.index'
+import { Route as BankingIndexRouteImport } from './routes/banking.index'
+import { Route as AutomationIndexRouteImport } from './routes/automation.index'
+import { Route as AiIndexRouteImport } from './routes/ai.index'
+import { Route as SalesInvoicesRouteImport } from './routes/sales.invoices'
+import { Route as SalesCustomersRouteImport } from './routes/sales.customers'
+import { Route as PurchasesVendorsRouteImport } from './routes/purchases.vendors'
+import { Route as PurchasesBillsRouteImport } from './routes/purchases.bills'
+import { Route as InventoryWarehousesRouteImport } from './routes/inventory.warehouses'
+import { Route as BankingReviewRouteImport } from './routes/banking.review'
+import { Route as BankingReconcileRouteImport } from './routes/banking.reconcile'
+import { Route as BankingConnectRouteImport } from './routes/banking.connect'
+import { Route as AccountingPnlRouteImport } from './routes/accounting.pnl'
+import { Route as AccountingJournalRouteImport } from './routes/accounting.journal'
+import { Route as AccountingGstRouteImport } from './routes/accounting.gst'
+import { Route as AccountingCoaRouteImport } from './routes/accounting.coa'
+import { Route as AccountingBalanceSheetRouteImport } from './routes/accounting.balance-sheet'
 import { Route as SalesInvoicesIdRouteImport } from './routes/sales.invoices.$id'
 
 const IndexRoute = IndexRouteImport.update({
@@ -39,94 +39,9 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AccountingBalanceSheetRoute = AccountingBalanceSheetRouteImport.update({
-  id: '/accounting/balance-sheet',
-  path: '/accounting/balance-sheet',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AccountingCoaRoute = AccountingCoaRouteImport.update({
-  id: '/accounting/coa',
-  path: '/accounting/coa',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AccountingGstRoute = AccountingGstRouteImport.update({
-  id: '/accounting/gst',
-  path: '/accounting/gst',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AccountingJournalRoute = AccountingJournalRouteImport.update({
-  id: '/accounting/journal',
-  path: '/accounting/journal',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AccountingPnlRoute = AccountingPnlRouteImport.update({
-  id: '/accounting/pnl',
-  path: '/accounting/pnl',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AiIndexRoute = AiIndexRouteImport.update({
-  id: '/ai/',
-  path: '/ai/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AutomationIndexRoute = AutomationIndexRouteImport.update({
-  id: '/automation/',
-  path: '/automation/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const BankingIndexRoute = BankingIndexRouteImport.update({
-  id: '/banking/',
-  path: '/banking/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const BankingConnectRoute = BankingConnectRouteImport.update({
-  id: '/banking/connect',
-  path: '/banking/connect',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const BankingReconcileRoute = BankingReconcileRouteImport.update({
-  id: '/banking/reconcile',
-  path: '/banking/reconcile',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const BankingReviewRoute = BankingReviewRouteImport.update({
-  id: '/banking/review',
-  path: '/banking/review',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CrmIndexRoute = CrmIndexRouteImport.update({
-  id: '/crm/',
-  path: '/crm/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const InventoryIndexRoute = InventoryIndexRouteImport.update({
-  id: '/inventory/',
-  path: '/inventory/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const InventoryWarehousesRoute = InventoryWarehousesRouteImport.update({
-  id: '/inventory/warehouses',
-  path: '/inventory/warehouses',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PosIndexRoute = PosIndexRouteImport.update({
-  id: '/pos/',
-  path: '/pos/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PurchasesBillsRoute = PurchasesBillsRouteImport.update({
-  id: '/purchases/bills',
-  path: '/purchases/bills',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PurchasesVendorsRoute = PurchasesVendorsRouteImport.update({
-  id: '/purchases/vendors',
-  path: '/purchases/vendors',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ReportsIndexRoute = ReportsIndexRouteImport.update({
-  id: '/reports/',
-  path: '/reports/',
+const SettingsIndexRoute = SettingsIndexRouteImport.update({
+  id: '/settings/',
+  path: '/settings/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SalesIndexRoute = SalesIndexRouteImport.update({
@@ -134,9 +49,39 @@ const SalesIndexRoute = SalesIndexRouteImport.update({
   path: '/sales/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SalesCustomersRoute = SalesCustomersRouteImport.update({
-  id: '/sales/customers',
-  path: '/sales/customers',
+const ReportsIndexRoute = ReportsIndexRouteImport.update({
+  id: '/reports/',
+  path: '/reports/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PosIndexRoute = PosIndexRouteImport.update({
+  id: '/pos/',
+  path: '/pos/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InventoryIndexRoute = InventoryIndexRouteImport.update({
+  id: '/inventory/',
+  path: '/inventory/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CrmIndexRoute = CrmIndexRouteImport.update({
+  id: '/crm/',
+  path: '/crm/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BankingIndexRoute = BankingIndexRouteImport.update({
+  id: '/banking/',
+  path: '/banking/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AutomationIndexRoute = AutomationIndexRouteImport.update({
+  id: '/automation/',
+  path: '/automation/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AiIndexRoute = AiIndexRouteImport.update({
+  id: '/ai/',
+  path: '/ai/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SalesInvoicesRoute = SalesInvoicesRouteImport.update({
@@ -144,9 +89,64 @@ const SalesInvoicesRoute = SalesInvoicesRouteImport.update({
   path: '/sales/invoices',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SettingsIndexRoute = SettingsIndexRouteImport.update({
-  id: '/settings/',
-  path: '/settings/',
+const SalesCustomersRoute = SalesCustomersRouteImport.update({
+  id: '/sales/customers',
+  path: '/sales/customers',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PurchasesVendorsRoute = PurchasesVendorsRouteImport.update({
+  id: '/purchases/vendors',
+  path: '/purchases/vendors',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PurchasesBillsRoute = PurchasesBillsRouteImport.update({
+  id: '/purchases/bills',
+  path: '/purchases/bills',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InventoryWarehousesRoute = InventoryWarehousesRouteImport.update({
+  id: '/inventory/warehouses',
+  path: '/inventory/warehouses',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BankingReviewRoute = BankingReviewRouteImport.update({
+  id: '/banking/review',
+  path: '/banking/review',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BankingReconcileRoute = BankingReconcileRouteImport.update({
+  id: '/banking/reconcile',
+  path: '/banking/reconcile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BankingConnectRoute = BankingConnectRouteImport.update({
+  id: '/banking/connect',
+  path: '/banking/connect',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AccountingPnlRoute = AccountingPnlRouteImport.update({
+  id: '/accounting/pnl',
+  path: '/accounting/pnl',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AccountingJournalRoute = AccountingJournalRouteImport.update({
+  id: '/accounting/journal',
+  path: '/accounting/journal',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AccountingGstRoute = AccountingGstRouteImport.update({
+  id: '/accounting/gst',
+  path: '/accounting/gst',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AccountingCoaRoute = AccountingCoaRouteImport.update({
+  id: '/accounting/coa',
+  path: '/accounting/coa',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AccountingBalanceSheetRoute = AccountingBalanceSheetRouteImport.update({
+  id: '/accounting/balance-sheet',
+  path: '/accounting/balance-sheet',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SalesInvoicesIdRoute = SalesInvoicesIdRouteImport.update({
@@ -350,130 +350,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/accounting/balance-sheet': {
-      id: '/accounting/balance-sheet'
-      path: '/accounting/balance-sheet'
-      fullPath: '/accounting/balance-sheet'
-      preLoaderRoute: typeof AccountingBalanceSheetRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/accounting/coa': {
-      id: '/accounting/coa'
-      path: '/accounting/coa'
-      fullPath: '/accounting/coa'
-      preLoaderRoute: typeof AccountingCoaRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/accounting/gst': {
-      id: '/accounting/gst'
-      path: '/accounting/gst'
-      fullPath: '/accounting/gst'
-      preLoaderRoute: typeof AccountingGstRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/accounting/journal': {
-      id: '/accounting/journal'
-      path: '/accounting/journal'
-      fullPath: '/accounting/journal'
-      preLoaderRoute: typeof AccountingJournalRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/accounting/pnl': {
-      id: '/accounting/pnl'
-      path: '/accounting/pnl'
-      fullPath: '/accounting/pnl'
-      preLoaderRoute: typeof AccountingPnlRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/ai/': {
-      id: '/ai/'
-      path: '/ai'
-      fullPath: '/ai/'
-      preLoaderRoute: typeof AiIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/automation/': {
-      id: '/automation/'
-      path: '/automation'
-      fullPath: '/automation/'
-      preLoaderRoute: typeof AutomationIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/banking/': {
-      id: '/banking/'
-      path: '/banking'
-      fullPath: '/banking/'
-      preLoaderRoute: typeof BankingIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/banking/connect': {
-      id: '/banking/connect'
-      path: '/banking/connect'
-      fullPath: '/banking/connect'
-      preLoaderRoute: typeof BankingConnectRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/banking/reconcile': {
-      id: '/banking/reconcile'
-      path: '/banking/reconcile'
-      fullPath: '/banking/reconcile'
-      preLoaderRoute: typeof BankingReconcileRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/banking/review': {
-      id: '/banking/review'
-      path: '/banking/review'
-      fullPath: '/banking/review'
-      preLoaderRoute: typeof BankingReviewRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/crm/': {
-      id: '/crm/'
-      path: '/crm'
-      fullPath: '/crm/'
-      preLoaderRoute: typeof CrmIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/inventory/': {
-      id: '/inventory/'
-      path: '/inventory'
-      fullPath: '/inventory/'
-      preLoaderRoute: typeof InventoryIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/inventory/warehouses': {
-      id: '/inventory/warehouses'
-      path: '/inventory/warehouses'
-      fullPath: '/inventory/warehouses'
-      preLoaderRoute: typeof InventoryWarehousesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/pos/': {
-      id: '/pos/'
-      path: '/pos'
-      fullPath: '/pos/'
-      preLoaderRoute: typeof PosIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/purchases/bills': {
-      id: '/purchases/bills'
-      path: '/purchases/bills'
-      fullPath: '/purchases/bills'
-      preLoaderRoute: typeof PurchasesBillsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/purchases/vendors': {
-      id: '/purchases/vendors'
-      path: '/purchases/vendors'
-      fullPath: '/purchases/vendors'
-      preLoaderRoute: typeof PurchasesVendorsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/reports/': {
-      id: '/reports/'
-      path: '/reports'
-      fullPath: '/reports/'
-      preLoaderRoute: typeof ReportsIndexRouteImport
+    '/settings/': {
+      id: '/settings/'
+      path: '/settings'
+      fullPath: '/settings/'
+      preLoaderRoute: typeof SettingsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/sales/': {
@@ -483,11 +364,53 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SalesIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/sales/customers': {
-      id: '/sales/customers'
-      path: '/sales/customers'
-      fullPath: '/sales/customers'
-      preLoaderRoute: typeof SalesCustomersRouteImport
+    '/reports/': {
+      id: '/reports/'
+      path: '/reports'
+      fullPath: '/reports/'
+      preLoaderRoute: typeof ReportsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pos/': {
+      id: '/pos/'
+      path: '/pos'
+      fullPath: '/pos/'
+      preLoaderRoute: typeof PosIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/inventory/': {
+      id: '/inventory/'
+      path: '/inventory'
+      fullPath: '/inventory/'
+      preLoaderRoute: typeof InventoryIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/crm/': {
+      id: '/crm/'
+      path: '/crm'
+      fullPath: '/crm/'
+      preLoaderRoute: typeof CrmIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/banking/': {
+      id: '/banking/'
+      path: '/banking'
+      fullPath: '/banking/'
+      preLoaderRoute: typeof BankingIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/automation/': {
+      id: '/automation/'
+      path: '/automation'
+      fullPath: '/automation/'
+      preLoaderRoute: typeof AutomationIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ai/': {
+      id: '/ai/'
+      path: '/ai'
+      fullPath: '/ai/'
+      preLoaderRoute: typeof AiIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/sales/invoices': {
@@ -497,11 +420,88 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SalesInvoicesRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/settings/': {
-      id: '/settings/'
-      path: '/settings'
-      fullPath: '/settings/'
-      preLoaderRoute: typeof SettingsIndexRouteImport
+    '/sales/customers': {
+      id: '/sales/customers'
+      path: '/sales/customers'
+      fullPath: '/sales/customers'
+      preLoaderRoute: typeof SalesCustomersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/purchases/vendors': {
+      id: '/purchases/vendors'
+      path: '/purchases/vendors'
+      fullPath: '/purchases/vendors'
+      preLoaderRoute: typeof PurchasesVendorsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/purchases/bills': {
+      id: '/purchases/bills'
+      path: '/purchases/bills'
+      fullPath: '/purchases/bills'
+      preLoaderRoute: typeof PurchasesBillsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/inventory/warehouses': {
+      id: '/inventory/warehouses'
+      path: '/inventory/warehouses'
+      fullPath: '/inventory/warehouses'
+      preLoaderRoute: typeof InventoryWarehousesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/banking/review': {
+      id: '/banking/review'
+      path: '/banking/review'
+      fullPath: '/banking/review'
+      preLoaderRoute: typeof BankingReviewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/banking/reconcile': {
+      id: '/banking/reconcile'
+      path: '/banking/reconcile'
+      fullPath: '/banking/reconcile'
+      preLoaderRoute: typeof BankingReconcileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/banking/connect': {
+      id: '/banking/connect'
+      path: '/banking/connect'
+      fullPath: '/banking/connect'
+      preLoaderRoute: typeof BankingConnectRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/accounting/pnl': {
+      id: '/accounting/pnl'
+      path: '/accounting/pnl'
+      fullPath: '/accounting/pnl'
+      preLoaderRoute: typeof AccountingPnlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/accounting/journal': {
+      id: '/accounting/journal'
+      path: '/accounting/journal'
+      fullPath: '/accounting/journal'
+      preLoaderRoute: typeof AccountingJournalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/accounting/gst': {
+      id: '/accounting/gst'
+      path: '/accounting/gst'
+      fullPath: '/accounting/gst'
+      preLoaderRoute: typeof AccountingGstRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/accounting/coa': {
+      id: '/accounting/coa'
+      path: '/accounting/coa'
+      fullPath: '/accounting/coa'
+      preLoaderRoute: typeof AccountingCoaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/accounting/balance-sheet': {
+      id: '/accounting/balance-sheet'
+      path: '/accounting/balance-sheet'
+      fullPath: '/accounting/balance-sheet'
+      preLoaderRoute: typeof AccountingBalanceSheetRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/sales/invoices/$id': {

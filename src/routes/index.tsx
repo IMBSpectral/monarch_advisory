@@ -27,7 +27,7 @@ import {
   Pie,
   Cell,
 } from "recharts";
-import { fetchDashboard } from "@/server/api";
+import { fetchDashboard } from "@/api";
 import { formatMinor } from "@/lib/money";
 import { aiInsights, inr } from "@/data/mock";
 

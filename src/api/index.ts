@@ -5,6 +5,17 @@
  * That matters here because it means the database, the posting engine, and the
  * money math never ship to the browser.
  *
+ * WHY THIS FILE ISN'T IN src/server/
+ * Routes import from here, and TanStack Start's import-protection plugin denies
+ * client-environment imports matching `**\/server\/**`. Server functions are
+ * *designed* to be imported by client code — the build strips each `.handler()`
+ * body and tree-shakes its server-only imports, leaving an RPC stub. So this file
+ * lives outside the guarded directory while everything it calls (ledger, reports,
+ * invoicing) stays in src/server/ and is only ever reached inside a handler.
+ *
+ * Importing `@/server/*` from a route will fail the client build — the SSR render
+ * still succeeds, so it shows up as a broken client bundle rather than a 500.
+ *
  * BIGINT SERIALIZATION: JSON can't represent bigint, so every function converts
  * minor units to strings at this boundary. The UI formats them with
  * `formatMinor()` from @/lib/money and never does arithmetic on them — money math
@@ -22,8 +33,8 @@ import {
   getProfitAndLoss,
   getReceivablesAging,
   getTrialBalance,
-} from "./reports";
-import { createInvoice, postInvoice, recordCustomerPayment } from "./invoicing";
+} from "@/server/reports";
+import { createInvoice, postInvoice, recordCustomerPayment } from "@/server/invoicing";
 
 /* ────────────────────────────────────────────────────────────────────────────
  * Session

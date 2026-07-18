@@ -1,0 +1,190 @@
+export const inr = (n: number) =>
+  "₹" + n.toLocaleString("en-IN", { maximumFractionDigits: 0 });
+export const inrFull = (n: number) =>
+  "₹" + n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+export const company = {
+  name: "IMB Labs LLP",
+  gstin: "27AABCI1234N1Z5",
+  branches: ["Mumbai HQ", "Bengaluru", "Delhi NCR", "Dubai"],
+};
+
+export const kpis = {
+  revenue: { value: 48725000, delta: 12.4 },
+  netProfit: { value: 9840000, delta: 8.2 },
+  cash: { value: 18420000, delta: -2.1 },
+  ar: { value: 6285000, delta: 4.6 },
+  ap: { value: 3910000, delta: -1.8 },
+  inventory: { value: 12480000, delta: 3.4 },
+};
+
+export const revenueSeries = [
+  { m: "Feb", revenue: 3200000, expense: 2100000 },
+  { m: "Mar", revenue: 3800000, expense: 2400000 },
+  { m: "Apr", revenue: 4100000, expense: 2600000 },
+  { m: "May", revenue: 3900000, expense: 2500000 },
+  { m: "Jun", revenue: 4500000, expense: 2800000 },
+  { m: "Jul", revenue: 4800000, expense: 3000000 },
+  { m: "Aug", revenue: 5200000, expense: 3200000 },
+  { m: "Sep", revenue: 5100000, expense: 3100000 },
+  { m: "Oct", revenue: 5600000, expense: 3400000 },
+  { m: "Nov", revenue: 5900000, expense: 3500000 },
+  { m: "Dec", revenue: 6400000, expense: 3900000 },
+  { m: "Jan", revenue: 6800000, expense: 4100000 },
+];
+
+export const cashFlow = [
+  { m: "Aug", inflow: 5200000, outflow: 3800000 },
+  { m: "Sep", inflow: 5100000, outflow: 3600000 },
+  { m: "Oct", inflow: 5600000, outflow: 4100000 },
+  { m: "Nov", inflow: 5900000, outflow: 4200000 },
+  { m: "Dec", inflow: 6400000, outflow: 4600000 },
+  { m: "Jan", inflow: 6800000, outflow: 4700000 },
+];
+
+export const cashForecast = [
+  { m: "Feb", actual: 6800000, forecast: 6800000 },
+  { m: "Mar", forecast: 7100000 },
+  { m: "Apr", forecast: 7450000 },
+  { m: "May", forecast: 7300000 },
+  { m: "Jun", forecast: 7900000 },
+  { m: "Jul", forecast: 8300000 },
+];
+
+export const topCustomers = [
+  { name: "Reliance Retail Ltd", revenue: 4820000, invoices: 24, logo: "R" },
+  { name: "Tata Digital", revenue: 3610000, invoices: 18, logo: "T" },
+  { name: "Flipkart Internet", revenue: 2940000, invoices: 15, logo: "F" },
+  { name: "Aditya Birla Fashion", revenue: 2210000, invoices: 12, logo: "A" },
+  { name: "Zomato Ltd", revenue: 1980000, invoices: 21, logo: "Z" },
+];
+
+export const invoices = [
+  { id: "INV-2026-0148", customer: "Reliance Retail Ltd", date: "2026-07-15", due: "2026-08-14", amount: 285000, balance: 285000, status: "Sent" },
+  { id: "INV-2026-0147", customer: "Tata Digital", date: "2026-07-14", due: "2026-07-29", amount: 142500, balance: 0, status: "Paid" },
+  { id: "INV-2026-0146", customer: "Flipkart Internet", date: "2026-07-12", due: "2026-08-11", amount: 398000, balance: 398000, status: "Sent" },
+  { id: "INV-2026-0145", customer: "Zomato Ltd", date: "2026-07-10", due: "2026-07-25", amount: 89400, balance: 89400, status: "Overdue" },
+  { id: "INV-2026-0144", customer: "Aditya Birla Fashion", date: "2026-07-08", due: "2026-08-07", amount: 512000, balance: 256000, status: "Partial" },
+  { id: "INV-2026-0143", customer: "Swiggy Bundl", date: "2026-07-06", due: "2026-07-21", amount: 76500, balance: 0, status: "Paid" },
+  { id: "INV-2026-0142", customer: "Nykaa E-Retail", date: "2026-07-04", due: "2026-08-03", amount: 218000, balance: 218000, status: "Sent" },
+  { id: "INV-2026-0141", customer: "Reliance Retail Ltd", date: "2026-07-02", due: "2026-07-17", amount: 445000, balance: 0, status: "Paid" },
+  { id: "INV-2026-0140", customer: "Myntra Designs", date: "2026-06-30", due: "2026-07-15", amount: 168000, balance: 168000, status: "Overdue" },
+  { id: "INV-2026-0139", customer: "BigBasket", date: "2026-06-28", due: "2026-07-28", amount: 92000, balance: 92000, status: "Sent" },
+  { id: "INV-2026-0138", customer: "Tata Digital", date: "2026-06-25", due: "2026-07-25", amount: 320000, balance: 0, status: "Paid" },
+  { id: "INV-2026-0137", customer: "Croma Retail", date: "2026-06-22", due: "2026-07-22", amount: 155000, balance: 155000, status: "Sent" },
+];
+
+export const bills = [
+  { id: "BILL-4521", vendor: "Amazon Web Services", date: "2026-07-14", due: "2026-08-13", amount: 184000, status: "Open" },
+  { id: "BILL-4520", vendor: "WeWork India", date: "2026-07-10", due: "2026-07-25", amount: 425000, status: "Overdue" },
+  { id: "BILL-4519", vendor: "Tanla Platforms", date: "2026-07-08", due: "2026-08-07", amount: 68000, status: "Open" },
+  { id: "BILL-4518", vendor: "Freshworks Inc", date: "2026-07-05", due: "2026-08-04", amount: 92500, status: "Paid" },
+  { id: "BILL-4517", vendor: "Google Cloud India", date: "2026-07-02", due: "2026-08-01", amount: 143000, status: "Open" },
+  { id: "BILL-4516", vendor: "Blue Dart Express", date: "2026-06-28", due: "2026-07-13", amount: 28400, status: "Paid" },
+];
+
+export const items = [
+  { sku: "MON-KB-01", name: "Monarch Mechanical Keyboard", category: "Peripherals", stock: 428, uom: "PCS", cost: 4200, price: 6499, warehouse: "Mumbai HQ" },
+  { sku: "MON-MS-14", name: "Ergonomic Wireless Mouse", category: "Peripherals", stock: 1240, uom: "PCS", cost: 890, price: 1499, warehouse: "Bengaluru" },
+  { sku: "MON-MN-27", name: '27" 4K UHD Monitor', category: "Displays", stock: 86, uom: "PCS", cost: 22000, price: 32999, warehouse: "Mumbai HQ" },
+  { sku: "MON-LP-15", name: "UltraBook Pro 15", category: "Laptops", stock: 34, uom: "PCS", cost: 68000, price: 94999, warehouse: "Delhi NCR" },
+  { sku: "MON-HP-BT", name: "Studio Bluetooth Headphones", category: "Audio", stock: 512, uom: "PCS", cost: 2400, price: 4299, warehouse: "Bengaluru" },
+  { sku: "MON-CH-EX", name: "Executive Ergo Chair", category: "Furniture", stock: 68, uom: "PCS", cost: 12500, price: 22999, warehouse: "Mumbai HQ" },
+  { sku: "MON-DK-ST", name: "Standing Desk 60x30", category: "Furniture", stock: 42, uom: "PCS", cost: 18000, price: 29999, warehouse: "Mumbai HQ" },
+  { sku: "MON-CB-USBC", name: "USB-C Hub 8-in-1", category: "Accessories", stock: 2140, uom: "PCS", cost: 780, price: 1799, warehouse: "Bengaluru" },
+  { sku: "MON-SP-BT", name: "Portable Bluetooth Speaker", category: "Audio", stock: 320, uom: "PCS", cost: 1800, price: 3299, warehouse: "Delhi NCR" },
+  { sku: "MON-WC-4K", name: "4K Streaming Webcam", category: "Peripherals", stock: 178, uom: "PCS", cost: 3400, price: 5499, warehouse: "Mumbai HQ" },
+];
+
+export const customers = [
+  { name: "Reliance Retail Ltd", email: "ap@ril.com", phone: "+91 98200 12345", city: "Mumbai", balance: 285000, gstin: "27AAACR5055K1Z2" },
+  { name: "Tata Digital", email: "finance@tatadigital.com", phone: "+91 98450 33221", city: "Bengaluru", balance: 0, gstin: "29AABCT1332L1ZE" },
+  { name: "Flipkart Internet", email: "vendors@flipkart.com", phone: "+91 80671 22001", city: "Bengaluru", balance: 398000, gstin: "29AACCF1122E1ZH" },
+  { name: "Aditya Birla Fashion", email: "ap@abfrl.com", phone: "+91 22456 88112", city: "Mumbai", balance: 256000, gstin: "27AACCA1234M1ZP" },
+  { name: "Zomato Ltd", email: "finance@zomato.com", phone: "+91 12440 88991", city: "Gurugram", balance: 89400, gstin: "06AAACZ4587R1Z5" },
+  { name: "Nykaa E-Retail", email: "ap@nykaa.com", phone: "+91 22333 44100", city: "Mumbai", balance: 218000, gstin: "27AABCF1122E1ZH" },
+  { name: "Myntra Designs", email: "vendors@myntra.com", phone: "+91 80500 12123", city: "Bengaluru", balance: 168000, gstin: "29AAECM1122P1ZQ" },
+  { name: "BigBasket", email: "ap@bigbasket.com", phone: "+91 80234 55667", city: "Bengaluru", balance: 92000, gstin: "29AABCB1122J1ZE" },
+];
+
+export const vendors = [
+  { name: "Amazon Web Services", email: "ar@aws.com", phone: "+91 22000 11111", city: "Mumbai", balance: 184000, gstin: "27AACCA1122E1ZH" },
+  { name: "WeWork India", email: "ar@wework.co.in", phone: "+91 22333 88800", city: "Mumbai", balance: 425000, gstin: "27AAECW1122P1ZL" },
+  { name: "Google Cloud India", email: "billing@google.com", phone: "+91 80112 22333", city: "Bengaluru", balance: 143000, gstin: "29AACCG1122E1ZQ" },
+  { name: "Tanla Platforms", email: "ar@tanla.com", phone: "+91 40567 88999", city: "Hyderabad", balance: 68000, gstin: "36AAECT1122P1ZL" },
+  { name: "Freshworks Inc", email: "ar@freshworks.com", phone: "+91 44222 55678", city: "Chennai", balance: 0, gstin: "33AACCF1122E1ZH" },
+];
+
+export const chartOfAccounts = [
+  { code: "1000", name: "Assets", type: "Assets", balance: 42580000, group: true },
+  { code: "1100", name: "Current Assets", type: "Assets", balance: 28960000, indent: 1 },
+  { code: "1110", name: "Cash & Bank", type: "Assets", balance: 18420000, indent: 2 },
+  { code: "1120", name: "Accounts Receivable", type: "Assets", balance: 6285000, indent: 2 },
+  { code: "1130", name: "Inventory", type: "Assets", balance: 12480000, indent: 2 },
+  { code: "1200", name: "Fixed Assets", type: "Assets", balance: 13620000, indent: 1 },
+  { code: "2000", name: "Liabilities", type: "Liabilities", balance: 12480000, group: true },
+  { code: "2100", name: "Accounts Payable", type: "Liabilities", balance: 3910000, indent: 1 },
+  { code: "2200", name: "GST Payable", type: "Liabilities", balance: 1840000, indent: 1 },
+  { code: "2300", name: "Long-term Loans", type: "Liabilities", balance: 6730000, indent: 1 },
+  { code: "3000", name: "Equity", type: "Equity", balance: 30100000, group: true },
+  { code: "4000", name: "Revenue", type: "Income", balance: 48725000, group: true },
+  { code: "4100", name: "Product Sales", type: "Income", balance: 38940000, indent: 1 },
+  { code: "4200", name: "Services", type: "Income", balance: 9785000, indent: 1 },
+  { code: "5000", name: "Expenses", type: "Expenses", balance: 38885000, group: true },
+  { code: "5100", name: "COGS", type: "Expenses", balance: 22140000, indent: 1 },
+  { code: "5200", name: "Salaries & Wages", type: "Expenses", balance: 8940000, indent: 1 },
+  { code: "5300", name: "Rent & Utilities", type: "Expenses", balance: 2680000, indent: 1 },
+  { code: "5400", name: "Marketing", type: "Expenses", balance: 3120000, indent: 1 },
+  { code: "5500", name: "Cloud & SaaS", type: "Expenses", balance: 2005000, indent: 1 },
+];
+
+export const journals = [
+  { id: "JE-002841", date: "2026-07-15", ref: "INV-2026-0148", memo: "Sale to Reliance Retail", debit: 285000, credit: 285000 },
+  { id: "JE-002840", date: "2026-07-14", ref: "PAY-1188", memo: "Receipt from Tata Digital", debit: 142500, credit: 142500 },
+  { id: "JE-002839", date: "2026-07-14", ref: "BILL-4521", memo: "AWS cloud services July", debit: 184000, credit: 184000 },
+  { id: "JE-002838", date: "2026-07-12", ref: "INV-2026-0146", memo: "Sale to Flipkart", debit: 398000, credit: 398000 },
+  { id: "JE-002837", date: "2026-07-10", ref: "SAL-JUL", memo: "Salary accrual July", debit: 745000, credit: 745000 },
+  { id: "JE-002836", date: "2026-07-08", ref: "GST-Q1", memo: "GST payable adjustment", debit: 182000, credit: 182000 },
+];
+
+export const salesFunnel = [
+  { stage: "Leads", value: 342 },
+  { stage: "Qualified", value: 218 },
+  { stage: "Proposal", value: 124 },
+  { stage: "Negotiation", value: 68 },
+  { stage: "Won", value: 41 },
+];
+
+export const leads = [
+  { name: "Piramal Enterprises", stage: "Qualified", owner: "Anita R.", value: 850000, source: "Website" },
+  { name: "Godrej Consumer", stage: "Proposal", owner: "Rahul M.", value: 1240000, source: "Referral" },
+  { name: "Bharti Airtel", stage: "Negotiation", owner: "Priya S.", value: 2100000, source: "Outbound" },
+  { name: "Mahindra Group", stage: "Proposal", owner: "Rahul M.", value: 3400000, source: "Event" },
+  { name: "Asian Paints", stage: "Leads", owner: "Anita R.", value: 620000, source: "LinkedIn" },
+  { name: "HDFC Bank", stage: "Won", owner: "Priya S.", value: 4800000, source: "Partner" },
+  { name: "ITC Limited", stage: "Qualified", owner: "Anita R.", value: 980000, source: "Website" },
+  { name: "Marico", stage: "Negotiation", owner: "Rahul M.", value: 1560000, source: "Referral" },
+];
+
+export const bankAccounts = [
+  { name: "HDFC Current 8821", balance: 12480000, txns: 148, last: "Today" },
+  { name: "ICICI Current 4432", balance: 4820000, txns: 96, last: "Yesterday" },
+  { name: "Axis Escrow 1104", balance: 1120000, txns: 12, last: "2 days ago" },
+];
+
+export const bankTxns = [
+  { date: "2026-07-15", desc: "NEFT-RELIANCE RETAIL-INV0148", amount: 285000, type: "credit", matched: false },
+  { date: "2026-07-14", desc: "IMPS-TATA DIGITAL-INV0147", amount: 142500, type: "credit", matched: true },
+  { date: "2026-07-14", desc: "AWS INDIA PVT LTD", amount: -184000, type: "debit", matched: true },
+  { date: "2026-07-13", desc: "SALARY BATCH-JUL-01", amount: -3420000, type: "debit", matched: true },
+  { date: "2026-07-12", desc: "NEFT-FLIPKART-INV0146", amount: 398000, type: "credit", matched: false },
+  { date: "2026-07-11", desc: "WEWORK INDIA-RENT", amount: -425000, type: "debit", matched: false },
+  { date: "2026-07-10", desc: "GST PAYMENT Q1", amount: -1840000, type: "debit", matched: true },
+];
+
+export const aiInsights = [
+  { icon: "trending", title: "Revenue up 12.4% MoM", desc: "Driven by Peripherals (+28%) and Displays (+18%)." },
+  { icon: "alert", title: "3 invoices overdue > 15 days", desc: "Total ₹4.2L at risk. Send reminders?" },
+  { icon: "sparkle", title: "Cash forecast: ₹83L by July", desc: "Comfortable runway. Consider FD ladder." },
+  { icon: "warn", title: "AWS spend up 22% vs last month", desc: "Anomaly flagged for review." },
+];

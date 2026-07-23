@@ -30,7 +30,9 @@ export default defineConfig({
         },
       },
     }),
-    nitro({ preset: "node-server" }),
+    // On Vercel (VERCEL=1 during build) emit the Vercel Build Output; otherwise
+    // build the standalone Node bundle used for local/Docker deploys.
+    nitro({ preset: process.env.VERCEL ? "vercel" : "node-server" }),
     viteReact(),
   ],
 });

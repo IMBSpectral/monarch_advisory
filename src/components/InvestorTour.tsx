@@ -2,9 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  Presentation, ChevronLeft, ChevronRight, X, Play, Sparkles,
-} from "lucide-react";
+import { Presentation, ChevronLeft, ChevronRight, X, Play, Sparkles } from "lucide-react";
 
 type Step = {
   route: string;
@@ -150,7 +148,10 @@ export function InvestorTour() {
   if (!open) {
     return (
       <Button
-        onClick={() => { setIdx(0); setOpen(true); }}
+        onClick={() => {
+          setIdx(0);
+          setOpen(true);
+        }}
         size="sm"
         variant="outline"
         className="fixed bottom-5 right-5 z-40 gap-1.5 shadow-elegant bg-background/95 backdrop-blur border-brand/30 hover:border-brand"
@@ -191,12 +192,8 @@ export function InvestorTour() {
           </div>
           <div className="p-5 space-y-4">
             <div>
-              <h3 className="text-lg font-semibold leading-snug tracking-tight">
-                {step.title}
-              </h3>
-              <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
-                {step.narration}
-              </p>
+              <h3 className="text-lg font-semibold leading-snug tracking-tight">{step.title}</h3>
+              <p className="text-sm text-muted-foreground mt-2 leading-relaxed">{step.narration}</p>
             </div>
             <div className="grid grid-cols-3 gap-2">
               {step.highlights.map((h) => (

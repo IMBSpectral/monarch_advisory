@@ -8,9 +8,9 @@ This is the spine that the rest of the platform hangs off.
 ```bash
 brew services start postgresql@17
 createdb monarch_dev              # first time only
-cp .env.example .env              # point DATABASE_URL at it
+cp .env.example .env              # two URLs: app role + admin role
 
-bun run db:migrate                # apply schema
+bun run db:migrate                # apply schema (also creates the monarch_app role)
 bun run db:seed                   # load demo books from src/data/mock.ts
 bun run db:verify                 # prove the seeded ledger is sound
 bun run db:test                   # prove the engine rejects bad input
@@ -124,18 +124,67 @@ allocation with over-allocation guards, tax on invoice lines, bank account
 records, audit log, document numbering, trial balance, P&L, balance sheet, A/R
 aging, account registers, dashboard.
 
-**Stubbed, and it matters:**
+**Auth — built.** `currentOrgId()` no longer returns the first org in the
+database. The chain is cookie → `sessions` row → user → membership → org, and
+every link is re-verified per request:
 
-- **Auth.** `currentOrgId()` in `src/server/api.ts` returns the first org in the
-  database. Real session → user → membership → org resolution is the next thing to
-  build. Every server function already routes tenancy through that one function,
-  so it's a one-file swap. **Nothing is access-controlled until this is done.**
+- `src/server/auth.ts` — password hashing (PBKDF2-HMAC-SHA256, 600k iterations
+  via WebCrypto, so it works identically on Node, Bun and Workers), session
+  issue/resolve/revoke, roles and capabilities, member administration.
+- `src/server/session.ts` — `requireAuth()`, `requirePermission(capability)`,
+  `currentOrgId()`, and the httpOnly / SameSite=Lax cookie plumbing.
+- `src/api/auth.ts` — signup, login, logout, org switching, member management.
+- `src/routes/__root.tsx` — `beforeLoad` gate with a public-route **allowlist**,
+  so a newly added route is private by default.
+
+Sessions are server-side rows, not sealed cookies, so logout and admin eviction
+are real; only the SHA-256 of the token is stored. Five roles
+(viewer → staff → accountant → admin → owner) map to capabilities in one table,
+and mutating server functions call `requirePermission` rather than checking role
+strings. The UI's `useCan()` hides controls but is **not** the boundary — the
+server re-checks every time.
+
+The seed creates one user per role plus an intentionally empty second tenant
+("Sentinel Foods"), so cross-org leakage is visible rather than theoretical.
+
+**Still stubbed, and it matters:**
+
 - **Bills** are posted directly to the ledger in the seed rather than through a
   bill service. `src/server/bills.ts` is the mirror of `invoicing.ts` and is the
   next service to write.
-- **Row-level security.** Tenancy is enforced in application code, not by the
-  database. A missed `orgId` filter in a new query leaks across tenants. Postgres
-  RLS would make that structurally impossible.
+**Row-level security — built.** Tenancy is no longer application convention.
+
+Every financial table (16 of them) has an RLS policy comparing `org_id` against a
+transaction-local `app.org_id`, set by `withOrg()` in `src/db/client.ts`. Both
+halves are covered: `USING` filters reads, `WITH CHECK` stops a caller writing a
+row *into* another tenant.
+
+Three properties make this worth the plumbing:
+
+1. **It fails closed.** `current_setting('app.org_id', true)` is NULL when unset,
+   and `org_id = NULL` is never true — so a query that forgets its tenant scope
+   returns *zero* rows, not *all* rows. A missed wrapper is an empty screen you
+   find in minutes, not a leak you find in a breach report.
+2. **The app can't bypass it.** Postgres exempts superusers unconditionally and
+   owners unless `FORCE` is set. The app connects as `monarch_app`, an ordinary
+   role that owns nothing; `FORCE` is on. Migrations and seeds use a *separate*
+   `DATABASE_ADMIN_URL`, so bypassing tenancy takes a different connection string
+   an operator must choose.
+3. **The audit log is append-only in the database.** `UPDATE` and `DELETE` are
+   revoked from `monarch_app`, so "no code path deletes audit rows" is a
+   guarantee rather than a convention.
+
+**Identity tables are deliberately exempt:** `users`, `sessions`, `memberships`,
+`organizations`. Reading them is *how* `app.org_id` gets decided, so gating them
+on it is circular — migration 0002 tried it for `organizations` and broke login
+outright, which migration 0003 undoes with the reasoning written down. These
+carry no financial data, and the rule replacing RLS for them is small enough to
+audit by reading one function: `resolveMembership()` returns only orgs the user
+provably belongs to.
+
+**CSRF:** server functions are covered by `createCsrfMiddleware` in `src/start.ts`.
+The session cookie is `SameSite=Lax` as well — Lax is a browser-side mitigation
+with known gaps, so origin verification on the server backs it up.
 
 **Not started:** inventory valuation (FIFO/WAC), COGS on sale, credit notes,
 vendor credits, expenses/receipts, bank feed ingestion and reconciliation
@@ -152,10 +201,15 @@ Nitro target. Local dev on Node is unaffected. Decide this before the first depl
 ## Adding a module
 
 1. Tables in `schema.ts`, `orgId` on every one, money as `bigint` minor units.
-2. `bun run db:generate && bun run db:migrate`.
-3. A service in `src/server/` that posts through `postJournalEntry()` — never
+2. `bun run db:generate && bun run db:migrate`, then **add the new table to the
+   RLS policy list** — copy the block in `drizzle/0002_row_level_security.sql`.
+   A new table without a policy is readable across every tenant.
+3. Reads and writes go through `withOrg(orgId, tx => …)`. If a query comes back
+   mysteriously empty, that wrapper is the first thing to check.
+4. A service in `src/server/` that posts through `postJournalEntry()` — never
    touch `journal_lines` directly.
-4. Reports that aggregate `journal_lines`, never cached document columns.
-5. A check in `verify.ts` cross-referencing the new subledger against its control
+5. Reports that aggregate `journal_lines`, never cached document columns.
+6. A check in `verify.ts` cross-referencing the new subledger against its control
    account.
-6. Server functions in `api.ts`, converting bigint → string at the boundary.
+7. Server functions in `api.ts`, converting bigint → string at the boundary,
+   guarded by `requireAuth`/`requirePermission`.

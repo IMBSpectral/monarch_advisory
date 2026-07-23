@@ -1,10 +1,10 @@
-<!-- LOVABLE:BEGIN -->
-> [!IMPORTANT]
-> This project is connected to [Lovable](https://lovable.dev). Avoid rewriting
-> published git history — force pushing, or rebasing/amending/squashing commits
-> that are already pushed — as it rewrites history on Lovable's side and the
-> user will likely lose their project history.
->
-> Commits you push to the connected branch sync back to Lovable and show up in
-> the editor, so keep the branch in a working state.
-<!-- LOVABLE:END -->
+# Monarch Advisory — agent notes
+
+Standalone TanStack Start + Drizzle/Postgres accounting app. No external editor
+sync — commit and push on your own cadence.
+
+- Money is integer minor units (paise, `bigint`). All journal entries post through
+  the single `postJournalEntry` chokepoint and must sum to zero.
+- Multi-tenancy is enforced by Postgres RLS via `withOrg(orgId, tx => ...)`.
+- Tests: `bun run db:test` (ledger behavior), `bun run db:verify` (integrity
+  invariants), `bun run e2e` (Playwright). Rebuild demo data with `bun run db:seed`.

@@ -3,8 +3,9 @@ import { PageHeader } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { FileText, Download } from "lucide-react";
+import { FileText, Download, Info } from "lucide-react";
 import { inr } from "@/data/mock";
+import { downloadCsv } from "@/lib/export";
 
 export const Route = createFileRoute("/accounting/gst")({ component: GST });
 
@@ -28,19 +29,38 @@ const summary = [
 function GST() {
   return (
     <>
-      <PageHeader title="GST Returns" subtitle="Automated filing across GSTR-1, 3B, 2B & 9" />
+      <PageHeader title="GST Returns" subtitle="GSTR-1, 3B, 2B & 9 overview" />
       <div className="p-6 space-y-4">
+        <div className="flex items-start gap-2 rounded-lg border border-brand/20 bg-brand/5 px-4 py-3 text-sm">
+          <Info className="mt-0.5 h-4 w-4 flex-shrink-0 text-brand" />
+          <p className="text-muted-foreground">
+            GST figures shown are <span className="font-medium text-foreground">indicative</span>;
+            statutory filing requires a GSP (GST Suvidha Provider) integration. Use Download to
+            export the summary for your CA or filing tool.
+          </p>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {returns.map((r) => (
             <Card key={r.name} className="p-5">
               <div className="flex items-start justify-between">
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-brand"><FileText className="h-4 w-4 text-white" /></div>
-                <Badge variant={r.status === "Ready" ? "default" : "secondary"} className={r.status === "Ready" ? "bg-success text-success-foreground" : ""}>{r.status}</Badge>
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-brand">
+                  <FileText className="h-4 w-4 text-white" />
+                </div>
+                <Badge
+                  variant={r.status === "Ready" ? "default" : "secondary"}
+                  className={r.status === "Ready" ? "bg-success text-success-foreground" : ""}
+                >
+                  {r.status}
+                </Badge>
               </div>
               <p className="font-semibold mt-3">{r.name}</p>
               <p className="text-xs text-muted-foreground">{r.desc}</p>
-              <p className="text-sm text-muted-foreground mt-2">Due: <span className="text-foreground font-medium">{r.due}</span></p>
-              {r.amount > 0 && <p className="text-lg font-semibold tabular-nums mt-1">{inr(r.amount)}</p>}
+              <p className="text-sm text-muted-foreground mt-2">
+                Due: <span className="text-foreground font-medium">{r.due}</span>
+              </p>
+              {r.amount > 0 && (
+                <p className="text-lg font-semibold tabular-nums mt-1">{inr(r.amount)}</p>
+              )}
             </Card>
           ))}
         </div>
@@ -50,13 +70,31 @@ function GST() {
               <h3 className="font-semibold">GST Summary — July 2026</h3>
               <p className="text-xs text-muted-foreground">Ready to file GSTR-3B</p>
             </div>
-            <Button size="sm" className="bg-gradient-brand text-white"><Download className="h-4 w-4 mr-1.5" />Download</Button>
+            <Button
+              size="sm"
+              className="bg-gradient-brand text-white"
+              onClick={() =>
+                downloadCsv(
+                  "gst-summary-jul-2026.csv",
+                  ["Line item", "Amount (INR)"],
+                  summary.map((s) => [s.l, String(s.v)]),
+                )
+              }
+            >
+              <Download className="h-4 w-4 mr-1.5" />
+              Download
+            </Button>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl">
             {summary.map((s) => (
-              <div key={s.l} className={`flex justify-between py-2 px-3 rounded-lg ${s.hi ? "bg-gradient-to-r from-brand/10 to-transparent border border-brand/20" : "border-b"}`}>
+              <div
+                key={s.l}
+                className={`flex justify-between py-2 px-3 rounded-lg ${s.hi ? "bg-gradient-to-r from-brand/10 to-transparent border border-brand/20" : "border-b"}`}
+              >
                 <span className={s.hi ? "font-semibold" : "text-muted-foreground"}>{s.l}</span>
-                <span className={`tabular-nums ${s.hi ? "font-bold text-brand" : ""}`}>{inr(s.v)}</span>
+                <span className={`tabular-nums ${s.hi ? "font-bold text-brand" : ""}`}>
+                  {inr(s.v)}
+                </span>
               </div>
             ))}
           </div>

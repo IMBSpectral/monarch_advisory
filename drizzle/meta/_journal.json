@@ -8,6 +8,104 @@
       "when": 1784408829773,
       "tag": "0000_premium_makkari",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1784416145169,
+      "tag": "0001_clammy_mercury",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1784420000000,
+      "tag": "0002_row_level_security",
+      "breakpoints": false
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1784420100000,
+      "tag": "0003_organizations_identity_layer",
+      "breakpoints": false
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1784702765468,
+      "tag": "0004_remarkable_shard",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1784704033926,
+      "tag": "0005_brown_captain_flint",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1784706740559,
+      "tag": "0006_wealthy_scrambler",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1784707766114,
+      "tag": "0007_swift_wrecker",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1784711497597,
+      "tag": "0008_whole_moondragon",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1784711874395,
+      "tag": "0009_massive_thunderball",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1784726294419,
+      "tag": "0010_peaceful_queen_noir",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1784785290543,
+      "tag": "0011_closed_chamber",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1784787497586,
+      "tag": "0012_acoustic_viper",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1784790699393,
+      "tag": "0013_nervous_mariko_yashida",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1784792528039,
+      "tag": "0014_magical_hammerhead",
+      "breakpoints": true
     }
   ]
 }

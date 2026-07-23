@@ -25,36 +25,44 @@
 import { createServerFn } from "@tanstack/react-start";
 import { and, desc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
-import { db } from "@/db/client";
-import { accounts, contacts, invoices, journalEntries, organizations } from "@/db/schema";
+import { db, withOrg } from "@/db/client";
+import {
+  accounts,
+  contacts,
+  invoiceLines,
+  invoices,
+  journalEntries,
+  organizations,
+} from "@/db/schema";
 import {
   getBalanceSheet,
+  getCashFlow,
   getDashboardSummary,
+  getDayBook,
+  getFinancialRatios,
+  getMonthlyPnl,
+  getPayablesAging,
   getProfitAndLoss,
   getReceivablesAging,
   getTrialBalance,
 } from "@/server/reports";
+import { getStockSummary } from "@/server/inventory";
 import { createInvoice, postInvoice, recordCustomerPayment } from "@/server/invoicing";
+import { assertCan } from "@/server/auth";
+import { currentOrgId, requireAuth, requirePermission } from "@/server/session";
 
 /* ────────────────────────────────────────────────────────────────────────────
  * Session
  * ──────────────────────────────────────────────────────────────────────────*/
 
 /**
- * Resolve the acting organization.
+ * Tenancy and permissions now resolve from the real session chain
+ * (cookie → session row → user → membership → org). See `./session`.
  *
- * PLACEHOLDER — returns the first org in the database. Real auth (session cookie
- * → user → membership → org) is the next thing to build. Every function below
- * already routes its tenancy through here, so swapping this out is a one-file
- * change rather than a rewrite.
+ * Read functions call `requireAuth`/`currentOrgId`; mutating functions call
+ * `requirePermission`, which resolves the caller and asserts a capability in one
+ * step so the check can't be omitted by accident.
  */
-async function currentOrgId(): Promise<string> {
-  const [org] = await db.select({ id: organizations.id }).from(organizations).limit(1);
-  if (!org) {
-    throw new Error("No organization found. Run `bun run db:seed`.");
-  }
-  return org.id;
-}
 
 /** Default reporting window: current Indian fiscal year to date. */
 function defaultPeriod(): { from: string; to: string } {
@@ -83,12 +91,13 @@ export const fetchDashboard = createServerFn({ method: "GET" })
     const from = data?.from ?? period.from;
     const to = data?.to ?? period.to;
 
-    const [org] = await db.select().from(organizations).where(eq(organizations.id, orgId));
+    return withOrg(orgId, async (tx) => {
+      const [org] = await tx.select().from(organizations).where(eq(organizations.id, orgId));
 
-    const summary = await getDashboardSummary(orgId, from, to);
+      const summary = await getDashboardSummary(tx, orgId, from, to);
 
-    // Revenue vs expense, month by month, straight from the ledger.
-    const trend = (await db.execute(sql`
+      // Revenue vs expense, month by month, straight from the ledger.
+      const trend = (await tx.execute(sql`
       select to_char(date_trunc('month', je.entry_date), 'Mon') as month,
              date_trunc('month', je.entry_date)                 as sort_key,
              coalesce(-sum(jl.amount_minor) filter (where a.type = 'income'), 0)  as revenue,
@@ -104,41 +113,42 @@ export const fetchDashboard = createServerFn({ method: "GET" })
       order by 2
     `)) as unknown as Array<Record<string, string>>;
 
-    const aging = await getReceivablesAging(orgId, to);
+      const aging = await getReceivablesAging(tx, orgId, to);
 
-    return {
-      organization: {
-        name: org.name,
-        baseCurrency: org.baseCurrency,
-        taxRegistrationNumber: org.taxRegistrationNumber,
-      },
-      period: { from, to },
-      summary: {
-        cash: summary.cashMinor.toString(),
-        receivables: summary.receivablesMinor.toString(),
-        payables: summary.payablesMinor.toString(),
-        revenue: summary.revenueThisPeriodMinor.toString(),
-        expenses: summary.expensesThisPeriodMinor.toString(),
-        netProfit: summary.netProfitThisPeriodMinor.toString(),
-        overdueReceivables: summary.overdueReceivablesMinor.toString(),
-      },
-      trend: trend.map((r) => ({
-        month: r.month,
-        revenue: r.revenue,
-        expense: r.expense,
-      })),
-      topDebtors: aging.rows.slice(0, 5).map((r) => ({
-        contactId: r.contactId,
-        name: r.contactName,
-        total: r.totalMinor.toString(),
-        overdue: (
-          r.days1to30Minor +
-          r.days31to60Minor +
-          r.days61to90Minor +
-          r.over90Minor
-        ).toString(),
-      })),
-    };
+      return {
+        organization: {
+          name: org.name,
+          baseCurrency: org.baseCurrency,
+          taxRegistrationNumber: org.taxRegistrationNumber,
+        },
+        period: { from, to },
+        summary: {
+          cash: summary.cashMinor.toString(),
+          receivables: summary.receivablesMinor.toString(),
+          payables: summary.payablesMinor.toString(),
+          revenue: summary.revenueThisPeriodMinor.toString(),
+          expenses: summary.expensesThisPeriodMinor.toString(),
+          netProfit: summary.netProfitThisPeriodMinor.toString(),
+          overdueReceivables: summary.overdueReceivablesMinor.toString(),
+        },
+        trend: trend.map((r) => ({
+          month: r.month,
+          revenue: r.revenue,
+          expense: r.expense,
+        })),
+        topDebtors: aging.rows.slice(0, 5).map((r) => ({
+          contactId: r.contactId,
+          name: r.contactName,
+          total: r.totalMinor.toString(),
+          overdue: (
+            r.days1to30Minor +
+            r.days31to60Minor +
+            r.days61to90Minor +
+            r.over90Minor
+          ).toString(),
+        })),
+      };
+    });
   });
 
 /* ────────────────────────────────────────────────────────────────────────────
@@ -150,18 +160,21 @@ export const fetchTrialBalance = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     const orgId = await currentOrgId();
     const asOf = data?.asOf ?? defaultPeriod().to;
-    const tb = await getTrialBalance(orgId, asOf);
-    return {
-      asOf,
-      isBalanced: tb.isBalanced,
-      totalDebit: tb.totalDebitMinor.toString(),
-      totalCredit: tb.totalCreditMinor.toString(),
-      rows: tb.rows.map((r) => ({
-        ...r,
-        debitMinor: r.debitMinor.toString(),
-        creditMinor: r.creditMinor.toString(),
-      })),
-    };
+
+    return withOrg(orgId, async (tx) => {
+      const tb = await getTrialBalance(tx, orgId, asOf);
+      return {
+        asOf,
+        isBalanced: tb.isBalanced,
+        totalDebit: tb.totalDebitMinor.toString(),
+        totalCredit: tb.totalCreditMinor.toString(),
+        rows: tb.rows.map((r) => ({
+          ...r,
+          debitMinor: r.debitMinor.toString(),
+          creditMinor: r.creditMinor.toString(),
+        })),
+      };
+    });
   });
 
 export const fetchProfitAndLoss = createServerFn({ method: "GET" })
@@ -169,74 +182,207 @@ export const fetchProfitAndLoss = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     const orgId = await currentOrgId();
     const period = defaultPeriod();
-    const pnl = await getProfitAndLoss(orgId, data?.from ?? period.from, data?.to ?? period.to);
-    const ser = (lines: typeof pnl.revenue) =>
-      lines.map((l) => ({ ...l, amountMinor: l.amountMinor.toString() }));
 
-    return {
-      from: pnl.from,
-      to: pnl.to,
-      revenue: ser(pnl.revenue),
-      costOfGoodsSold: ser(pnl.costOfGoodsSold),
-      operatingExpenses: ser(pnl.operatingExpenses),
-      otherIncome: ser(pnl.otherIncome),
-      otherExpenses: ser(pnl.otherExpenses),
-      totalRevenue: pnl.totalRevenueMinor.toString(),
-      totalCogs: pnl.totalCogsMinor.toString(),
-      grossProfit: pnl.grossProfitMinor.toString(),
-      totalOperatingExpense: pnl.totalOperatingExpenseMinor.toString(),
-      operatingProfit: pnl.operatingProfitMinor.toString(),
-      netProfit: pnl.netProfitMinor.toString(),
-    };
+    return withOrg(orgId, async (tx) => {
+      const pnl = await getProfitAndLoss(
+        tx,
+        orgId,
+        data?.from ?? period.from,
+        data?.to ?? period.to,
+      );
+      const ser = (lines: typeof pnl.revenue) =>
+        lines.map((l) => ({ ...l, amountMinor: l.amountMinor.toString() }));
+
+      return {
+        from: pnl.from,
+        to: pnl.to,
+        revenue: ser(pnl.revenue),
+        costOfGoodsSold: ser(pnl.costOfGoodsSold),
+        operatingExpenses: ser(pnl.operatingExpenses),
+        otherIncome: ser(pnl.otherIncome),
+        otherExpenses: ser(pnl.otherExpenses),
+        totalRevenue: pnl.totalRevenueMinor.toString(),
+        totalCogs: pnl.totalCogsMinor.toString(),
+        grossProfit: pnl.grossProfitMinor.toString(),
+        totalOperatingExpense: pnl.totalOperatingExpenseMinor.toString(),
+        operatingProfit: pnl.operatingProfitMinor.toString(),
+        netProfit: pnl.netProfitMinor.toString(),
+      };
+    });
   });
 
 export const fetchBalanceSheet = createServerFn({ method: "GET" })
   .validator(z.object({ asOf: z.string() }).optional())
   .handler(async ({ data }) => {
     const orgId = await currentOrgId();
-    const bs = await getBalanceSheet(orgId, data?.asOf ?? defaultPeriod().to);
-    const ser = (lines: typeof bs.assets) =>
-      lines.map((l) => ({ ...l, amountMinor: l.amountMinor.toString() }));
 
-    return {
-      asOf: bs.asOf,
-      isBalanced: bs.isBalanced,
-      assets: ser(bs.assets),
-      liabilities: ser(bs.liabilities),
-      equity: ser(bs.equity),
-      totalAssets: bs.totalAssetsMinor.toString(),
-      totalLiabilities: bs.totalLiabilitiesMinor.toString(),
-      totalEquity: bs.totalEquityMinor.toString(),
-      retainedEarnings: bs.retainedEarningsMinor.toString(),
-    };
+    return withOrg(orgId, async (tx) => {
+      const bs = await getBalanceSheet(tx, orgId, data?.asOf ?? defaultPeriod().to);
+      const ser = (lines: typeof bs.assets) =>
+        lines.map((l) => ({ ...l, amountMinor: l.amountMinor.toString() }));
+
+      return {
+        asOf: bs.asOf,
+        isBalanced: bs.isBalanced,
+        assets: ser(bs.assets),
+        liabilities: ser(bs.liabilities),
+        equity: ser(bs.equity),
+        totalAssets: bs.totalAssetsMinor.toString(),
+        totalLiabilities: bs.totalLiabilitiesMinor.toString(),
+        totalEquity: bs.totalEquityMinor.toString(),
+        retainedEarnings: bs.retainedEarningsMinor.toString(),
+      };
+    });
   });
 
 export const fetchReceivablesAging = createServerFn({ method: "GET" })
   .validator(z.object({ asOf: z.string() }).optional())
   .handler(async ({ data }) => {
     const orgId = await currentOrgId();
-    const aging = await getReceivablesAging(orgId, data?.asOf ?? defaultPeriod().to);
+
+    return withOrg(orgId, async (tx) => {
+      const aging = await getReceivablesAging(tx, orgId, data?.asOf ?? defaultPeriod().to);
+      return {
+        rows: aging.rows.map((r) => ({
+          contactId: r.contactId,
+          contactName: r.contactName,
+          current: r.currentMinor.toString(),
+          days1to30: r.days1to30Minor.toString(),
+          days31to60: r.days31to60Minor.toString(),
+          days61to90: r.days61to90Minor.toString(),
+          over90: r.over90Minor.toString(),
+          total: r.totalMinor.toString(),
+        })),
+        totals: {
+          current: aging.totals.currentMinor.toString(),
+          days1to30: aging.totals.days1to30Minor.toString(),
+          days31to60: aging.totals.days31to60Minor.toString(),
+          days61to90: aging.totals.days61to90Minor.toString(),
+          over90: aging.totals.over90Minor.toString(),
+          total: aging.totals.totalMinor.toString(),
+        },
+      };
+    });
+  });
+
+export const fetchPayablesAging = createServerFn({ method: "GET" })
+  .validator(z.object({ asOf: z.string() }).optional())
+  .handler(async ({ data }) => {
+    const orgId = await currentOrgId();
+    return withOrg(orgId, async (tx) => {
+      const aging = await getPayablesAging(tx, orgId, data?.asOf ?? defaultPeriod().to);
+      return {
+        rows: aging.rows.map((r) => ({
+          contactName: r.contactName,
+          current: r.currentMinor.toString(),
+          days1to30: r.days1to30Minor.toString(),
+          days31to60: r.days31to60Minor.toString(),
+          days61to90: r.days61to90Minor.toString(),
+          over90: r.over90Minor.toString(),
+          total: r.totalMinor.toString(),
+        })),
+        totals: {
+          current: aging.totals.currentMinor.toString(),
+          days1to30: aging.totals.days1to30Minor.toString(),
+          days31to60: aging.totals.days31to60Minor.toString(),
+          days61to90: aging.totals.days61to90Minor.toString(),
+          over90: aging.totals.over90Minor.toString(),
+          total: aging.totals.totalMinor.toString(),
+        },
+      };
+    });
+  });
+
+export const fetchDayBook = createServerFn({ method: "GET" })
+  .validator(z.object({ from: z.string(), to: z.string() }).optional())
+  .handler(async ({ data }) => {
+    const orgId = await currentOrgId();
+    const period = defaultPeriod();
+    return withOrg(orgId, async (tx) => {
+      const db = await getDayBook(tx, orgId, data?.from ?? period.from, data?.to ?? period.to);
+      return {
+        rows: db.rows.map((r) => ({
+          entryNumber: r.entryNumber,
+          entryDate: r.entryDate,
+          source: r.source,
+          reference: r.reference,
+          memo: r.memo,
+          status: r.status,
+          amount: r.amountMinor.toString(),
+        })),
+        total: db.totalMinor.toString(),
+      };
+    });
+  });
+
+export const fetchCashFlow = createServerFn({ method: "GET" })
+  .validator(z.object({ from: z.string(), to: z.string() }).optional())
+  .handler(async ({ data }) => {
+    const orgId = await currentOrgId();
+    const period = defaultPeriod();
+    return withOrg(orgId, async (tx) => {
+      const cf = await getCashFlow(tx, orgId, data?.from ?? period.from, data?.to ?? period.to);
+      const ser = (l: { label: string; amountMinor: bigint }[]) =>
+        l.map((x) => ({ label: x.label, amount: x.amountMinor.toString() }));
+      return {
+        from: cf.from,
+        to: cf.to,
+        operating: ser(cf.operating),
+        investing: ser(cf.investing),
+        financing: ser(cf.financing),
+        operatingTotal: cf.operatingTotalMinor.toString(),
+        investingTotal: cf.investingTotalMinor.toString(),
+        financingTotal: cf.financingTotalMinor.toString(),
+        netCash: cf.netCashMinor.toString(),
+        openingCash: cf.openingCashMinor.toString(),
+        closingCash: cf.closingCashMinor.toString(),
+        reconciles: cf.reconciles,
+      };
+    });
+  });
+
+export const fetchFinancialRatios = createServerFn({ method: "GET" }).handler(async () => {
+  const orgId = await currentOrgId();
+  const period = defaultPeriod();
+  return withOrg(orgId, async (tx) => {
+    const r = await getFinancialRatios(tx, orgId, period.from, period.to);
     return {
-      rows: aging.rows.map((r) => ({
-        contactId: r.contactId,
-        contactName: r.contactName,
-        current: r.currentMinor.toString(),
-        days1to30: r.days1to30Minor.toString(),
-        days31to60: r.days31to60Minor.toString(),
-        days61to90: r.days61to90Minor.toString(),
-        over90: r.over90Minor.toString(),
-        total: r.totalMinor.toString(),
-      })),
-      totals: {
-        current: aging.totals.currentMinor.toString(),
-        days1to30: aging.totals.days1to30Minor.toString(),
-        days31to60: aging.totals.days31to60Minor.toString(),
-        days61to90: aging.totals.days61to90Minor.toString(),
-        over90: aging.totals.over90Minor.toString(),
-        total: aging.totals.totalMinor.toString(),
-      },
+      ratios: r.ratios,
+      currentAssets: r.currentAssetsMinor.toString(),
+      currentLiabilities: r.currentLiabilitiesMinor.toString(),
     };
   });
+});
+
+export const fetchMonthlyPnl = createServerFn({ method: "GET" }).handler(async () => {
+  const orgId = await currentOrgId();
+  const period = defaultPeriod();
+  return withOrg(orgId, async (tx) => {
+    const rows = await getMonthlyPnl(tx, orgId, period.from, period.to);
+    return rows.map((m) => ({
+      month: m.month,
+      revenue: m.revenueMinor.toString(),
+      cogs: m.cogsMinor.toString(),
+      grossProfit: m.grossProfitMinor.toString(),
+      expenses: m.expensesMinor.toString(),
+      netProfit: m.netProfitMinor.toString(),
+    }));
+  });
+});
+
+export const fetchStockSummary = createServerFn({ method: "GET" }).handler(async () => {
+  const orgId = await currentOrgId();
+  return withOrg(orgId, async (tx) => {
+    const rows = await getStockSummary(tx, orgId);
+    return rows.map((r) => ({
+      name: r.name,
+      sku: r.sku,
+      onHandQty: r.onHandQty,
+      avgCost: r.avgCostMinor.toString(),
+      value: r.valueMinor.toString(),
+    }));
+  });
+});
 
 /* ────────────────────────────────────────────────────────────────────────────
  * Lists
@@ -246,24 +392,26 @@ export const fetchInvoices = createServerFn({ method: "GET" })
   .validator(z.object({ limit: z.number().max(200).optional() }).optional())
   .handler(async ({ data }) => {
     const orgId = await currentOrgId();
-    const rows = await db
-      .select({
-        id: invoices.id,
-        invoiceNumber: invoices.invoiceNumber,
-        invoiceDate: invoices.invoiceDate,
-        dueDate: invoices.dueDate,
-        status: invoices.status,
-        currency: invoices.currency,
-        totalMinor: invoices.totalMinor,
-        amountPaidMinor: invoices.amountPaidMinor,
-        customerName: contacts.displayName,
-        contactId: contacts.id,
-      })
-      .from(invoices)
-      .innerJoin(contacts, eq(contacts.id, invoices.contactId))
-      .where(eq(invoices.orgId, orgId))
-      .orderBy(desc(invoices.invoiceDate), desc(invoices.invoiceNumber))
-      .limit(data?.limit ?? 50);
+    const rows = await withOrg(orgId, (tx) =>
+      tx
+        .select({
+          id: invoices.id,
+          invoiceNumber: invoices.invoiceNumber,
+          invoiceDate: invoices.invoiceDate,
+          dueDate: invoices.dueDate,
+          status: invoices.status,
+          currency: invoices.currency,
+          totalMinor: invoices.totalMinor,
+          amountPaidMinor: invoices.amountPaidMinor,
+          customerName: contacts.displayName,
+          contactId: contacts.id,
+        })
+        .from(invoices)
+        .innerJoin(contacts, eq(contacts.id, invoices.contactId))
+        .where(eq(invoices.orgId, orgId))
+        .orderBy(desc(invoices.invoiceDate), desc(invoices.invoiceNumber))
+        .limit(data?.limit ?? 50),
+    );
 
     return rows.map((r) => ({
       ...r,
@@ -275,11 +423,110 @@ export const fetchInvoices = createServerFn({ method: "GET" })
     }));
   });
 
+/**
+ * One invoice with everything the detail page renders: header, the customer,
+ * its lines, and the payments applied so far. All in a single tenant-scoped
+ * transaction so the picture is internally consistent.
+ */
+export const fetchInvoiceDetail = createServerFn({ method: "GET" })
+  .validator(z.object({ id: z.string().uuid() }))
+  .handler(async ({ data }) => {
+    const orgId = await currentOrgId();
+
+    return withOrg(orgId, async (tx) => {
+      const [inv] = await tx
+        .select()
+        .from(invoices)
+        .where(and(eq(invoices.id, data.id), eq(invoices.orgId, orgId)));
+      if (!inv) throw new Error("Invoice not found.");
+
+      const [customer] = await tx.select().from(contacts).where(eq(contacts.id, inv.contactId));
+
+      const lines = await tx
+        .select()
+        .from(invoiceLines)
+        .where(eq(invoiceLines.invoiceId, inv.id))
+        .orderBy(invoiceLines.lineNumber);
+
+      const paymentRows = await tx.execute(sql`
+        select p.payment_number, p.payment_date, p.method, pa.amount_minor
+        from payment_allocations pa
+        join payments p on p.id = pa.payment_id
+        where pa.invoice_id = ${inv.id} and pa.org_id = ${orgId}
+        order by p.payment_date
+      `);
+
+      return {
+        id: inv.id,
+        invoiceNumber: inv.invoiceNumber,
+        invoiceDate: inv.invoiceDate,
+        dueDate: inv.dueDate,
+        status: inv.status,
+        currency: inv.currency,
+        exchangeRate: inv.exchangeRate,
+        foreignTotal: inv.foreignTotalMinor != null ? inv.foreignTotalMinor.toString() : null,
+        notes: inv.notes,
+        terms: inv.terms,
+        subtotal: inv.subtotalMinor.toString(),
+        taxTotal: inv.taxTotalMinor.toString(),
+        total: inv.totalMinor.toString(),
+        paid: inv.amountPaidMinor.toString(),
+        balance: (inv.totalMinor - inv.amountPaidMinor).toString(),
+        customer: customer
+          ? {
+              id: customer.id,
+              name: customer.displayName,
+              email: customer.email,
+              taxRegistrationNumber: customer.taxRegistrationNumber,
+            }
+          : null,
+        lines: lines.map((l) => ({
+          id: l.id,
+          description: l.description,
+          quantity: l.quantity,
+          unitPrice: l.unitPriceMinor.toString(),
+          taxAmount: l.taxAmountMinor.toString(),
+          lineTotal: l.lineTotalMinor.toString(),
+        })),
+        payments: (paymentRows as unknown as Array<Record<string, string>>).map((p) => ({
+          paymentNumber: p.payment_number,
+          paymentDate: p.payment_date,
+          method: p.method,
+          amount: p.amount_minor,
+        })),
+      };
+    });
+  });
+
+/**
+ * Cash and bank accounts a receipt can be deposited into — the "which account
+ * did the money land in" dropdown on the payment form.
+ */
+export const fetchDepositAccounts = createServerFn({ method: "GET" }).handler(async () => {
+  const orgId = await currentOrgId();
+  return withOrg(orgId, async (tx) => {
+    const rows = await tx
+      .select({ id: accounts.id, code: accounts.code, name: accounts.name })
+      .from(accounts)
+      .where(
+        and(
+          eq(accounts.orgId, orgId),
+          eq(accounts.subtype, "cash_and_bank"),
+          eq(accounts.isGroup, false),
+          eq(accounts.isActive, true),
+        ),
+      )
+      .orderBy(accounts.code);
+    return rows;
+  });
+});
+
 export const fetchChartOfAccounts = createServerFn({ method: "GET" }).handler(async () => {
   const orgId = await currentOrgId();
 
   // Balances come from the ledger, joined on — never stored on the account.
-  const rows = (await db.execute(sql`
+  const rows = (await withOrg(orgId, (tx) =>
+    tx.execute(sql`
       select a.id, a.code, a.name, a.type::text as type, a.subtype::text as subtype,
              a.is_group, a.is_system, a.parent_id,
              coalesce(sum(jl.amount_minor), 0) as net_minor
@@ -291,7 +538,8 @@ export const fetchChartOfAccounts = createServerFn({ method: "GET" }).handler(as
         and a.deleted_at is null
       group by a.id, a.code, a.name, a.type, a.subtype, a.is_group, a.is_system, a.parent_id
       order by a.code
-    `)) as unknown as Array<Record<string, string | boolean | null>>;
+    `),
+  )) as unknown as Array<Record<string, string | boolean | null>>;
 
   return rows.map((r) => {
     const net = BigInt((r.net_minor as string) ?? "0");
@@ -315,7 +563,8 @@ export const fetchJournal = createServerFn({ method: "GET" })
   .validator(z.object({ limit: z.number().max(200).optional() }).optional())
   .handler(async ({ data }) => {
     const orgId = await currentOrgId();
-    const rows = (await db.execute(sql`
+    const rows = (await withOrg(orgId, (tx) =>
+      tx.execute(sql`
       select je.id, je.entry_number, je.entry_date, je.status::text as status,
              je.source::text as source, je.reference, je.memo,
              coalesce(sum(jl.amount_minor) filter (where jl.amount_minor > 0), 0) as total_debit,
@@ -326,7 +575,8 @@ export const fetchJournal = createServerFn({ method: "GET" })
       group by je.id
       order by je.entry_date desc, je.entry_number desc
       limit ${data?.limit ?? 50}
-    `)) as unknown as Array<Record<string, string>>;
+    `),
+    )) as unknown as Array<Record<string, string>>;
 
     return rows.map((r) => ({
       id: r.id,
@@ -370,7 +620,11 @@ export const createInvoiceFn = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data }) => {
-    const orgId = await currentOrgId();
+    // Raising a draft is a staff-level act; posting it to the ledger is not.
+    // When the caller asks for both in one step, they need both capabilities.
+    const principal = await requirePermission("document:create");
+    if (data.postImmediately) assertCan(principal, "ledger:post");
+    const orgId = principal.orgId;
 
     const result = await createInvoice({
       orgId,
@@ -386,7 +640,7 @@ export const createInvoiceFn = createServerFn({ method: "POST" })
     });
 
     if (data.postImmediately) {
-      await postInvoice({ orgId, invoiceId: result.invoiceId });
+      await postInvoice({ orgId, invoiceId: result.invoiceId, userId: principal.userId });
     }
 
     return {
@@ -399,8 +653,12 @@ export const createInvoiceFn = createServerFn({ method: "POST" })
 export const postInvoiceFn = createServerFn({ method: "POST" })
   .validator(z.object({ invoiceId: z.string().uuid() }))
   .handler(async ({ data }) => {
-    const orgId = await currentOrgId();
-    const entry = await postInvoice({ orgId, invoiceId: data.invoiceId });
+    const principal = await requirePermission("ledger:post");
+    const entry = await postInvoice({
+      orgId: principal.orgId,
+      invoiceId: data.invoiceId,
+      userId: principal.userId,
+    });
     return { entryId: entry.entryId, entryNumber: entry.entryNumber };
   });
 
@@ -424,7 +682,8 @@ export const recordPaymentFn = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data }) => {
-    const orgId = await currentOrgId();
+    const principal = await requirePermission("payment:record");
+    const orgId = principal.orgId;
     const result = await recordCustomerPayment({
       orgId,
       contactId: data.contactId,

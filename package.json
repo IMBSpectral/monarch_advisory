@@ -10,12 +10,13 @@
     "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
-    "db:studio": "drizzle-kit studio",
-    "db:seed": "bun --env-file=.env src/db/seed.ts",
-    "db:verify": "bun --env-file=.env src/db/verify.ts",
-    "db:test": "bun --env-file=.env src/db/test-ledger.ts"
+    "db:generate": "MONARCH_DB_ROLE=admin drizzle-kit generate",
+    "db:migrate": "MONARCH_DB_ROLE=admin drizzle-kit migrate",
+    "db:studio": "MONARCH_DB_ROLE=admin drizzle-kit studio",
+    "db:seed": "MONARCH_DB_ROLE=admin bun --env-file=.env src/db/seed.ts",
+    "db:verify": "MONARCH_DB_ROLE=admin bun --env-file=.env src/db/verify.ts",
+    "db:test": "MONARCH_DB_ROLE=admin bun --env-file=.env src/db/test-ledger.ts",
+    "e2e": "playwright test"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -75,7 +76,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.32.0",
-    "@lovable.dev/vite-tanstack-config": "^2.7.6",
+    "@playwright/test": "^1.61.1",
     "@types/node": "^22.16.5",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",

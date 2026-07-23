@@ -18,7 +18,7 @@
  */
 
 import { and, eq, inArray, sql } from "drizzle-orm";
-import { db } from "@/db/client";
+import { withOrg } from "@/db/client";
 import type { DbOrTx } from "@/db/client";
 import {
   contacts,
@@ -40,6 +40,15 @@ import {
   writeAudit,
   type PostingLine,
 } from "./ledger";
+import {
+  commitStockOut,
+  getDefaultWarehouseId,
+  getTrackedItem,
+  planStockOut,
+  reverseDocumentStock,
+  type IssueRequest,
+  type StockOutPlan,
+} from "./inventory";
 
 /* ────────────────────────────────────────────────────────────────────────────
  * Money helpers
@@ -158,7 +167,7 @@ export async function createInvoice(
     throw new LedgerError("An invoice needs at least one line.", "NO_LINES");
   }
 
-  return db.transaction(async (tx) => {
+  return withOrg(input.orgId, async (tx) => {
     const [customer] = await tx
       .select()
       .from(contacts)
@@ -203,9 +212,36 @@ export async function createInvoice(
       return computeLine(line, rate?.rateBps ?? null);
     });
 
-    const subtotal = computed.reduce((a, c) => a + c.lineTotalMinor, 0n);
-    const taxTotal = computed.reduce((a, c) => a + c.taxAmountMinor, 0n);
+    // Multi-currency: line amounts are entered in the invoice's own currency. We
+    // convert each to the org's base currency ONCE, here, and store base
+    // everywhere (posting, aging, reports). Converting per line keeps the invoice
+    // internally balanced (Σ base lines + base tax == base total), and because
+    // nothing downstream reconverts, the A/R control account and the aging report
+    // can never drift. The foreign total is kept only for display on the document.
+    const invCurrency = input.currency ?? customer.currency ?? org.baseCurrency;
+    const rate = input.exchangeRate ? Number(input.exchangeRate) : 1;
+    // A foreign-currency invoice must carry a real exchange rate, or its amounts
+    // would silently be booked as base-currency (e.g. $100 posted as ₹100).
+    if (invCurrency !== org.baseCurrency && (!input.exchangeRate || rate <= 0)) {
+      throw new LedgerError(
+        `Invoice currency ${invCurrency} differs from base ${org.baseCurrency}; an exchange rate is required.`,
+        "EXCHANGE_RATE_REQUIRED",
+      );
+    }
+    const isForeign = invCurrency !== org.baseCurrency;
+    const toBase = (m: bigint) => (isForeign ? BigInt(Math.round(Number(m) * rate)) : m);
+
+    const baseLines = computed.map((c) => ({
+      ...c,
+      lineTotalMinor: toBase(c.lineTotalMinor),
+      taxAmountMinor: toBase(c.taxAmountMinor),
+    }));
+    const subtotal = baseLines.reduce((a, c) => a + c.lineTotalMinor, 0n);
+    const taxTotal = baseLines.reduce((a, c) => a + c.taxAmountMinor, 0n);
     const total = subtotal + taxTotal;
+    const foreignTotalMinor = isForeign
+      ? computed.reduce((a, c) => a + c.lineTotalMinor + c.taxAmountMinor, 0n)
+      : null;
 
     if (total <= 0n) {
       throw new LedgerError(
@@ -238,6 +274,7 @@ export async function createInvoice(
         subtotalMinor: subtotal,
         taxTotalMinor: taxTotal,
         totalMinor: total,
+        foreignTotalMinor,
         notes: input.notes ?? null,
         terms: input.terms ?? null,
         createdByUserId: input.userId ?? null,
@@ -252,11 +289,11 @@ export async function createInvoice(
         itemId: line.itemId ?? null,
         description: line.description,
         quantity: computed[i].quantity,
-        unitPriceMinor: line.unitPriceMinor,
+        unitPriceMinor: toBase(line.unitPriceMinor),
         discountBps: line.discountBps ?? 0,
         taxRateId: computed[i].taxRateId,
-        taxAmountMinor: computed[i].taxAmountMinor,
-        lineTotalMinor: computed[i].lineTotalMinor,
+        taxAmountMinor: baseLines[i].taxAmountMinor,
+        lineTotalMinor: baseLines[i].lineTotalMinor,
         revenueAccountId: line.revenueAccountId ?? null,
       })),
     );
@@ -287,8 +324,10 @@ export async function postInvoice(args: {
   orgId: string;
   invoiceId: string;
   userId?: string | null;
+  /** Skip the customer credit-limit check (an accountant override). */
+  allowCreditOverride?: boolean;
 }): Promise<{ entryId: string; entryNumber: string }> {
-  return db.transaction(async (tx) => {
+  return withOrg(args.orgId, async (tx) => {
     const [invoice] = await tx
       .select()
       .from(invoices)
@@ -311,6 +350,35 @@ export async function postInvoice(args: {
 
     const arAccountId = await resolveControlAccount(tx, args.orgId, "accounts_receivable");
 
+    // Credit control: refuse to extend more credit than the customer is allowed.
+    // Their current receivable is the sum of AR lines tagged with this contact
+    // (invoices raise it, payments and credit notes lower it), so this reflects
+    // exactly what they already owe.
+    if (!args.allowCreditOverride) {
+      const [customer] = await tx
+        .select({ creditLimitMinor: contacts.creditLimitMinor, displayName: contacts.displayName })
+        .from(contacts)
+        .where(eq(contacts.id, invoice.contactId));
+      if (customer?.creditLimitMinor && customer.creditLimitMinor > 0n) {
+        const rows = (await tx.execute(sql`
+          select coalesce(sum(jl.amount_minor), 0) as ar
+          from journal_lines jl
+          join accounts a on a.id = jl.account_id
+          join journal_entries je on je.id = jl.entry_id
+          where jl.org_id = ${args.orgId} and a.subtype = 'accounts_receivable'
+            and jl.contact_id = ${invoice.contactId} and je.status in ('posted','reversed')
+        `)) as unknown as Array<{ ar: string }>;
+        const currentAR = BigInt(rows[0].ar);
+        if (currentAR + invoice.totalMinor > customer.creditLimitMinor) {
+          throw new LedgerError(
+            `Posting ${invoice.invoiceNumber} would put ${customer.displayName} at ` +
+              `${currentAR + invoice.totalMinor} against a credit limit of ${customer.creditLimitMinor}.`,
+            "CREDIT_LIMIT_EXCEEDED",
+          );
+        }
+      }
+    }
+
     const postings: PostingLine[] = [];
 
     // One debit to AR for the full claim, tagged with the customer so aging works.
@@ -318,8 +386,6 @@ export async function postInvoice(args: {
       debit(arAccountId, invoice.totalMinor, {
         contactId: invoice.contactId,
         memo: `Invoice ${invoice.invoiceNumber}`,
-        currency: invoice.currency,
-        exchangeRate: invoice.exchangeRate,
       }),
     );
 
@@ -340,8 +406,6 @@ export async function postInvoice(args: {
         credit(accountId, amount, {
           contactId: invoice.contactId,
           memo: `Revenue — ${invoice.invoiceNumber}`,
-          currency: invoice.currency,
-          exchangeRate: invoice.exchangeRate,
         }),
       );
     }
@@ -353,10 +417,59 @@ export async function postInvoice(args: {
         credit(taxAccountId, invoice.taxTotalMinor, {
           contactId: invoice.contactId,
           memo: `Output tax — ${invoice.invoiceNumber}`,
-          currency: invoice.currency,
-          exchangeRate: invoice.exchangeRate,
         }),
       );
+    }
+
+    // ── Cost of goods sold ──────────────────────────────────────────────────
+    // For inventory-tracked lines, the sale also relieves stock at its carrying
+    // cost and books COGS. The value is computed against current stock BEFORE the
+    // entry is posted (it's a line on this entry); the movement itself is written
+    // AFTER, once the entry id exists. See inventory.ts for the plan/commit split.
+    const issueRequests: IssueRequest[] = [];
+    const itemAccounts = new Map<string, { invAcct: string; cogsAcct: string }>();
+    // If a delivery note already relieved stock and booked COGS, this invoice
+    // recognises revenue only — relieving again would double-count.
+    for (const line of invoice.stockRelieved ? [] : lines) {
+      if (!line.itemId) continue;
+      const tracked = await getTrackedItem(tx, args.orgId, line.itemId);
+      if (!tracked) continue;
+      const invAcct =
+        tracked.inventoryAccountId ?? (await resolveControlAccount(tx, args.orgId, "inventory"));
+      const cogsAcct =
+        tracked.cogsAccountId ?? (await resolveControlAccount(tx, args.orgId, "cost_of_goods_sold"));
+      itemAccounts.set(line.itemId, { invAcct, cogsAcct });
+      issueRequests.push({
+        itemId: line.itemId,
+        quantity: line.quantity,
+        memo: `COGS — ${line.description}`,
+      });
+    }
+
+    let stockPlan: StockOutPlan | null = null;
+    if (issueRequests.length > 0) {
+      const warehouseId = await getDefaultWarehouseId(tx, args.orgId);
+      stockPlan = await planStockOut(tx, args.orgId, warehouseId, issueRequests);
+
+      // Group by account so entries stay readable when items share accounts.
+      const cogsByAccount = new Map<string, bigint>();
+      const inventoryByAccount = new Map<string, bigint>();
+      for (const pl of stockPlan.lines) {
+        const acc = itemAccounts.get(pl.itemId)!;
+        cogsByAccount.set(acc.cogsAcct, (cogsByAccount.get(acc.cogsAcct) ?? 0n) + pl.valueMinor);
+        inventoryByAccount.set(
+          acc.invAcct,
+          (inventoryByAccount.get(acc.invAcct) ?? 0n) + pl.valueMinor,
+        );
+      }
+      for (const [accountId, amount] of cogsByAccount) {
+        if (amount === 0n) continue;
+        postings.push(debit(accountId, amount, { memo: `COGS — ${invoice.invoiceNumber}` }));
+      }
+      for (const [accountId, amount] of inventoryByAccount) {
+        if (amount === 0n) continue;
+        postings.push(credit(accountId, amount, { memo: `Stock out — ${invoice.invoiceNumber}` }));
+      }
     }
 
     const entry = await postJournalEntry(
@@ -372,6 +485,16 @@ export async function postInvoice(args: {
       },
       tx,
     );
+
+    if (stockPlan) {
+      await commitStockOut(tx, args.orgId, stockPlan, {
+        moveDate: invoice.invoiceDate,
+        source: "sale",
+        sourceDocumentId: invoice.id,
+        jeId: entry.entryId,
+        userId: args.userId,
+      });
+    }
 
     await tx
       .update(invoices)
@@ -437,7 +560,7 @@ export async function recordCustomerPayment(
     );
   }
 
-  return db.transaction(async (tx) => {
+  return withOrg(input.orgId, async (tx) => {
     const [org] = await tx
       .select({ baseCurrency: organizations.baseCurrency })
       .from(organizations)
@@ -620,10 +743,12 @@ export async function voidInvoice(args: {
 }): Promise<void> {
   const { reverseJournalEntry } = await import("./ledger");
 
-  const [invoice] = await db
-    .select()
-    .from(invoices)
-    .where(and(eq(invoices.id, args.invoiceId), eq(invoices.orgId, args.orgId)));
+  const [invoice] = await withOrg(args.orgId, (tx) =>
+    tx
+      .select()
+      .from(invoices)
+      .where(and(eq(invoices.id, args.invoiceId), eq(invoices.orgId, args.orgId))),
+  );
 
   if (!invoice) {
     throw new LedgerError(`Invoice ${args.invoiceId} not found.`, "INVOICE_NOT_FOUND");
@@ -644,7 +769,17 @@ export async function voidInvoice(args: {
     });
   }
 
-  await db.transaction(async (tx) => {
+  await withOrg(args.orgId, async (tx) => {
+    // Put the goods back: the reversing entry already restored the Inventory
+    // account, so restocking keeps the account/stock identity intact.
+    await reverseDocumentStock(tx, {
+      orgId: args.orgId,
+      sourceDocumentId: args.invoiceId,
+      moveDate: new Date().toISOString().slice(0, 10),
+      jeId: invoice.journalEntryId,
+      userId: args.userId,
+    });
+
     await tx
       .update(invoices)
       .set({ status: "void", voidedAt: new Date(), updatedAt: new Date() })

@@ -1,17 +1,58 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
-  LayoutDashboard, BookOpen, FileText, ShoppingCart, Package, Users, Store,
-  Landmark, BarChart3, Workflow, Sparkles, Settings, Receipt, Wallet,
-  TrendingUp, Boxes, ClipboardList, Crown, ArrowLeftRight,
+  LayoutDashboard,
+  BookOpen,
+  FileText,
+  ShoppingCart,
+  Package,
+  Users,
+  Store,
+  Landmark,
+  BarChart3,
+  Workflow,
+  Sparkles,
+  Settings,
+  Receipt,
+  Wallet,
+  TrendingUp,
+  Boxes,
+  ClipboardList,
+  Crown,
+  ArrowLeftRight,
+  Truck,
+  PackageCheck,
+  Undo2,
+  Redo2,
+  ClipboardCheck,
+  Layers,
+  Building2,
+  Repeat,
+  Upload,
 } from "lucide-react";
 import {
-  Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
-  SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarFooter,
+  Sidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarFooter,
 } from "@/components/ui/sidebar";
-import { useRole } from "./RoleContext";
+import { useSession, useCan, type Role } from "./SessionContext";
 import { Badge } from "@/components/ui/badge";
 import { Lock } from "lucide-react";
 
+/**
+ * Nav entries carry the capability needed to reach them, so the sidebar hides
+ * what the signed-in role can't use. Items with no `capability` are readable by
+ * anyone with a membership.
+ *
+ * This is presentation only. Hiding a link is not access control — the route's
+ * server functions enforce the same capability independently.
+ */
 const groups = [
   {
     label: "Overview",
@@ -25,6 +66,11 @@ const groups = [
     items: [
       { title: "Chart of Accounts", url: "/accounting/coa", icon: BookOpen },
       { title: "Journal Entries", url: "/accounting/journal", icon: FileText },
+      { title: "Contra", url: "/accounting/contra", icon: ArrowLeftRight },
+      { title: "Cost Centres", url: "/accounting/cost-centers", icon: Layers },
+      { title: "Fixed Assets", url: "/accounting/fixed-assets", icon: Building2 },
+      { title: "Exchange Rates", url: "/accounting/exchange-rates", icon: ArrowLeftRight },
+      { title: "Period Close", url: "/accounting/period-close", icon: Lock, capability: "period:close" },
       { title: "P&L Statement", url: "/accounting/pnl", icon: TrendingUp },
       { title: "Balance Sheet", url: "/accounting/balance-sheet", icon: ClipboardList },
       { title: "GST Returns", url: "/accounting/gst", icon: Receipt },
@@ -34,6 +80,10 @@ const groups = [
     label: "Sales",
     items: [
       { title: "Invoices", url: "/sales/invoices", icon: FileText },
+      { title: "Sales Orders", url: "/sales/orders", icon: ClipboardCheck },
+      { title: "Deliveries", url: "/sales/deliveries", icon: Truck },
+      { title: "Recurring", url: "/sales/recurring", icon: Repeat },
+      { title: "Credit Notes", url: "/sales/credit-notes", icon: Undo2 },
       { title: "Customers", url: "/sales/customers", icon: Users },
       { title: "Sales Dashboard", url: "/sales", icon: BarChart3 },
     ],
@@ -42,6 +92,9 @@ const groups = [
     label: "Purchases",
     items: [
       { title: "Bills", url: "/purchases/bills", icon: Receipt },
+      { title: "Purchase Orders", url: "/purchases/orders", icon: ClipboardCheck },
+      { title: "Goods Receipts", url: "/purchases/grn", icon: PackageCheck },
+      { title: "Debit Notes", url: "/purchases/debit-notes", icon: Redo2 },
       { title: "Vendors", url: "/purchases/vendors", icon: Users },
     ],
   },
@@ -50,28 +103,74 @@ const groups = [
     items: [
       { title: "Inventory", url: "/inventory", icon: Package },
       { title: "Warehouses", url: "/inventory/warehouses", icon: Boxes },
-      { title: "CRM", url: "/crm", icon: ShoppingCart },
-      { title: "Point of Sale", url: "/pos", icon: Store },
+      { title: "CRM", url: "/crm", icon: ShoppingCart, capability: "contact:manage" },
+      { title: "Point of Sale", url: "/pos", icon: Store, capability: "document:create" },
       { title: "Banking", url: "/banking", icon: Landmark },
-      { title: "Connect Accounts", url: "/banking/connect", icon: Wallet },
-      { title: "Review Transactions", url: "/banking/review", icon: ClipboardList },
-      { title: "Reconciliation", url: "/banking/reconcile", icon: ArrowLeftRight },
+      { title: "Import Statement", url: "/banking/import", icon: Upload, capability: "bank:reconcile" },
+      {
+        title: "Connect Accounts",
+        url: "/banking/connect",
+        icon: Wallet,
+        capability: "bank:manage",
+      },
+      {
+        title: "Review Transactions",
+        url: "/banking/review",
+        icon: ClipboardList,
+        capability: "bank:reconcile",
+      },
+      {
+        title: "Reconciliation",
+        url: "/banking/reconcile",
+        icon: ArrowLeftRight,
+        capability: "bank:reconcile",
+      },
       { title: "Reports", url: "/reports", icon: BarChart3 },
       { title: "Automation", url: "/automation", icon: Workflow },
     ],
   },
   {
     label: "System",
-    items: [
-      { title: "Settings", url: "/settings", icon: Settings },
-    ],
+    items: [{ title: "Settings", url: "/settings", icon: Settings, capability: "settings:manage" }],
   },
 ];
 
+const ROLE_LABEL: Record<Role, string> = {
+  owner: "Owner",
+  admin: "Admin",
+  accountant: "Accountant",
+  staff: "Staff",
+  viewer: "Viewer",
+};
+
 export function AppSidebar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const { can, meta } = useRole();
+  const session = useSession();
   const isActive = (url: string) => (url === "/" ? pathname === "/" : pathname.startsWith(url));
+
+  // Capability checks are hooks, so they must run unconditionally and in a
+  // stable order — resolve them all up front rather than inside the map.
+  const grants: Record<string, boolean> = {
+    "settings:manage": useCan("settings:manage"),
+    "bank:manage": useCan("bank:manage"),
+    "bank:reconcile": useCan("bank:reconcile"),
+    "document:create": useCan("document:create"),
+    "contact:manage": useCan("contact:manage"),
+    "period:close": useCan("period:close"),
+  };
+
+  const can = (capability?: string) => !capability || grants[capability] === true;
+
+  const initials = (session?.name ?? "?")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((p) => p[0])
+    .join("")
+    .toUpperCase();
+
+  const isFullAccess = session?.role === "owner" || session?.role === "admin";
 
   return (
     <Sidebar collapsible="icon" className="border-r-0">
@@ -81,14 +180,18 @@ export function AppSidebar() {
             <Crown className="h-5 w-5 text-white" />
           </div>
           <div className="flex flex-col group-data-[collapsible=icon]:hidden">
-            <span className="text-sm font-semibold tracking-tight text-sidebar-foreground">Monarch ERP</span>
-            <span className="text-[10px] uppercase tracking-widest text-sidebar-foreground/50">IMB Labs LLP</span>
+            <span className="text-sm font-semibold tracking-tight text-sidebar-foreground">
+              Monarch ERP
+            </span>
+            <span className="truncate text-[10px] uppercase tracking-widest text-sidebar-foreground/50">
+              {session?.orgName ?? ""}
+            </span>
           </div>
         </div>
       </SidebarHeader>
       <SidebarContent className="gap-0">
         {groups.map((group) => {
-          const visible = group.items.filter((i) => can(i.url));
+          const visible = group.items.filter((i) => can(i.capability));
           if (visible.length === 0) return null;
           return (
             <SidebarGroup key={group.label}>
@@ -116,27 +219,38 @@ export function AppSidebar() {
             </SidebarGroup>
           );
         })}
-        {meta.id !== "ceo" && (
+        {!isFullAccess && (
           <div className="mx-3 mt-2 rounded-lg border border-dashed border-sidebar-border/60 p-2.5 group-data-[collapsible=icon]:hidden">
             <div className="flex items-center gap-1.5 text-[10px] text-sidebar-foreground/60 uppercase tracking-widest">
               <Lock className="h-3 w-3" /> Restricted
             </div>
             <p className="text-[11px] text-sidebar-foreground/70 mt-1 leading-snug">
-              Some modules are hidden by <span className="font-medium">{meta.label}</span> role permissions.
+              Some modules are hidden by your{" "}
+              <span className="font-medium">
+                {session ? (ROLE_LABEL[session.role] ?? session.role) : ""}
+              </span>{" "}
+              role permissions.
             </p>
           </div>
         )}
       </SidebarContent>
       <SidebarFooter className="border-t border-sidebar-border/50 p-3">
         <div className="flex items-center gap-2.5 group-data-[collapsible=icon]:hidden">
-          <div className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold text-white ${meta.accent}`}>
-            {meta.initials}
+          <div className="bg-gradient-brand flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold text-white">
+            {initials}
           </div>
-          <div className="flex flex-col flex-1 min-w-0">
-            <span className="text-xs font-medium text-sidebar-foreground truncate">{meta.name}</span>
-            <span className="text-[10px] text-sidebar-foreground/50">{meta.title}</span>
+          <div className="flex min-w-0 flex-1 flex-col">
+            <span className="truncate text-xs font-medium text-sidebar-foreground">
+              {session?.name ?? "—"}
+            </span>
+            <span className="truncate text-[10px] text-sidebar-foreground/50">
+              {session ? (ROLE_LABEL[session.role] ?? session.role) : ""}
+              {session ? ` · ${session.orgName}` : ""}
+            </span>
           </div>
-          <Badge variant="secondary" className="text-[9px] uppercase tracking-wider">Live</Badge>
+          <Badge variant="secondary" className="text-[9px] uppercase tracking-wider">
+            Live
+          </Badge>
         </div>
       </SidebarFooter>
     </Sidebar>

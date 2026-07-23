@@ -33,3 +33,6 @@ dist-ssr
 
 # Local env
 .env
+e2e/.auth/
+test-results/
+playwright-report/

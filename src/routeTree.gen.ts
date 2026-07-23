@@ -9,6 +9,8 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SignupRouteImport } from './routes/signup'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SettingsIndexRouteImport } from './routes/settings.index'
 import { Route as SalesIndexRouteImport } from './routes/sales.index'
@@ -19,21 +21,55 @@ import { Route as CrmIndexRouteImport } from './routes/crm.index'
 import { Route as BankingIndexRouteImport } from './routes/banking.index'
 import { Route as AutomationIndexRouteImport } from './routes/automation.index'
 import { Route as AiIndexRouteImport } from './routes/ai.index'
-import { Route as SalesInvoicesRouteImport } from './routes/sales.invoices'
+import { Route as SalesRecurringRouteImport } from './routes/sales.recurring'
+import { Route as SalesOrdersRouteImport } from './routes/sales.orders'
+import { Route as SalesDeliveriesRouteImport } from './routes/sales.deliveries'
 import { Route as SalesCustomersRouteImport } from './routes/sales.customers'
+import { Route as SalesCreditNotesRouteImport } from './routes/sales.credit-notes'
+import { Route as ReportsTrialBalanceRouteImport } from './routes/reports.trial-balance'
+import { Route as ReportsStockRouteImport } from './routes/reports.stock'
+import { Route as ReportsRatiosRouteImport } from './routes/reports.ratios'
+import { Route as ReportsPayablesAgingRouteImport } from './routes/reports.payables-aging'
+import { Route as ReportsMonthlyPnlRouteImport } from './routes/reports.monthly-pnl'
+import { Route as ReportsForexRouteImport } from './routes/reports.forex'
+import { Route as ReportsDayBookRouteImport } from './routes/reports.day-book'
+import { Route as ReportsCostCenterPnlRouteImport } from './routes/reports.cost-center-pnl'
+import { Route as ReportsConsolidationRouteImport } from './routes/reports.consolidation'
+import { Route as ReportsCashFlowRouteImport } from './routes/reports.cash-flow'
+import { Route as ReportsBudgetRouteImport } from './routes/reports.budget'
 import { Route as PurchasesVendorsRouteImport } from './routes/purchases.vendors'
+import { Route as PurchasesOrdersRouteImport } from './routes/purchases.orders'
+import { Route as PurchasesGrnRouteImport } from './routes/purchases.grn'
+import { Route as PurchasesDebitNotesRouteImport } from './routes/purchases.debit-notes'
 import { Route as PurchasesBillsRouteImport } from './routes/purchases.bills'
 import { Route as InventoryWarehousesRouteImport } from './routes/inventory.warehouses'
 import { Route as BankingReviewRouteImport } from './routes/banking.review'
 import { Route as BankingReconcileRouteImport } from './routes/banking.reconcile'
+import { Route as BankingImportRouteImport } from './routes/banking.import'
 import { Route as BankingConnectRouteImport } from './routes/banking.connect'
 import { Route as AccountingPnlRouteImport } from './routes/accounting.pnl'
+import { Route as AccountingPeriodCloseRouteImport } from './routes/accounting.period-close'
 import { Route as AccountingJournalRouteImport } from './routes/accounting.journal'
 import { Route as AccountingGstRouteImport } from './routes/accounting.gst'
+import { Route as AccountingFixedAssetsRouteImport } from './routes/accounting.fixed-assets'
+import { Route as AccountingExchangeRatesRouteImport } from './routes/accounting.exchange-rates'
+import { Route as AccountingCostCentersRouteImport } from './routes/accounting.cost-centers'
+import { Route as AccountingContraRouteImport } from './routes/accounting.contra'
 import { Route as AccountingCoaRouteImport } from './routes/accounting.coa'
 import { Route as AccountingBalanceSheetRouteImport } from './routes/accounting.balance-sheet'
+import { Route as SalesInvoicesIndexRouteImport } from './routes/sales.invoices.index'
 import { Route as SalesInvoicesIdRouteImport } from './routes/sales.invoices.$id'
 
+const SignupRoute = SignupRouteImport.update({
+  id: '/signup',
+  path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -84,9 +120,19 @@ const AiIndexRoute = AiIndexRouteImport.update({
   path: '/ai/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SalesInvoicesRoute = SalesInvoicesRouteImport.update({
-  id: '/sales/invoices',
-  path: '/sales/invoices',
+const SalesRecurringRoute = SalesRecurringRouteImport.update({
+  id: '/sales/recurring',
+  path: '/sales/recurring',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SalesOrdersRoute = SalesOrdersRouteImport.update({
+  id: '/sales/orders',
+  path: '/sales/orders',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SalesDeliveriesRoute = SalesDeliveriesRouteImport.update({
+  id: '/sales/deliveries',
+  path: '/sales/deliveries',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SalesCustomersRoute = SalesCustomersRouteImport.update({
@@ -94,9 +140,84 @@ const SalesCustomersRoute = SalesCustomersRouteImport.update({
   path: '/sales/customers',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SalesCreditNotesRoute = SalesCreditNotesRouteImport.update({
+  id: '/sales/credit-notes',
+  path: '/sales/credit-notes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReportsTrialBalanceRoute = ReportsTrialBalanceRouteImport.update({
+  id: '/reports/trial-balance',
+  path: '/reports/trial-balance',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReportsStockRoute = ReportsStockRouteImport.update({
+  id: '/reports/stock',
+  path: '/reports/stock',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReportsRatiosRoute = ReportsRatiosRouteImport.update({
+  id: '/reports/ratios',
+  path: '/reports/ratios',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReportsPayablesAgingRoute = ReportsPayablesAgingRouteImport.update({
+  id: '/reports/payables-aging',
+  path: '/reports/payables-aging',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReportsMonthlyPnlRoute = ReportsMonthlyPnlRouteImport.update({
+  id: '/reports/monthly-pnl',
+  path: '/reports/monthly-pnl',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReportsForexRoute = ReportsForexRouteImport.update({
+  id: '/reports/forex',
+  path: '/reports/forex',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReportsDayBookRoute = ReportsDayBookRouteImport.update({
+  id: '/reports/day-book',
+  path: '/reports/day-book',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReportsCostCenterPnlRoute = ReportsCostCenterPnlRouteImport.update({
+  id: '/reports/cost-center-pnl',
+  path: '/reports/cost-center-pnl',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReportsConsolidationRoute = ReportsConsolidationRouteImport.update({
+  id: '/reports/consolidation',
+  path: '/reports/consolidation',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReportsCashFlowRoute = ReportsCashFlowRouteImport.update({
+  id: '/reports/cash-flow',
+  path: '/reports/cash-flow',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReportsBudgetRoute = ReportsBudgetRouteImport.update({
+  id: '/reports/budget',
+  path: '/reports/budget',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PurchasesVendorsRoute = PurchasesVendorsRouteImport.update({
   id: '/purchases/vendors',
   path: '/purchases/vendors',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PurchasesOrdersRoute = PurchasesOrdersRouteImport.update({
+  id: '/purchases/orders',
+  path: '/purchases/orders',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PurchasesGrnRoute = PurchasesGrnRouteImport.update({
+  id: '/purchases/grn',
+  path: '/purchases/grn',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PurchasesDebitNotesRoute = PurchasesDebitNotesRouteImport.update({
+  id: '/purchases/debit-notes',
+  path: '/purchases/debit-notes',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PurchasesBillsRoute = PurchasesBillsRouteImport.update({
@@ -119,6 +240,11 @@ const BankingReconcileRoute = BankingReconcileRouteImport.update({
   path: '/banking/reconcile',
   getParentRoute: () => rootRouteImport,
 } as any)
+const BankingImportRoute = BankingImportRouteImport.update({
+  id: '/banking/import',
+  path: '/banking/import',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const BankingConnectRoute = BankingConnectRouteImport.update({
   id: '/banking/connect',
   path: '/banking/connect',
@@ -127,6 +253,11 @@ const BankingConnectRoute = BankingConnectRouteImport.update({
 const AccountingPnlRoute = AccountingPnlRouteImport.update({
   id: '/accounting/pnl',
   path: '/accounting/pnl',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AccountingPeriodCloseRoute = AccountingPeriodCloseRouteImport.update({
+  id: '/accounting/period-close',
+  path: '/accounting/period-close',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AccountingJournalRoute = AccountingJournalRouteImport.update({
@@ -139,6 +270,26 @@ const AccountingGstRoute = AccountingGstRouteImport.update({
   path: '/accounting/gst',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AccountingFixedAssetsRoute = AccountingFixedAssetsRouteImport.update({
+  id: '/accounting/fixed-assets',
+  path: '/accounting/fixed-assets',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AccountingExchangeRatesRoute = AccountingExchangeRatesRouteImport.update({
+  id: '/accounting/exchange-rates',
+  path: '/accounting/exchange-rates',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AccountingCostCentersRoute = AccountingCostCentersRouteImport.update({
+  id: '/accounting/cost-centers',
+  path: '/accounting/cost-centers',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AccountingContraRoute = AccountingContraRouteImport.update({
+  id: '/accounting/contra',
+  path: '/accounting/contra',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AccountingCoaRoute = AccountingCoaRouteImport.update({
   id: '/accounting/coa',
   path: '/accounting/coa',
@@ -149,27 +300,57 @@ const AccountingBalanceSheetRoute = AccountingBalanceSheetRouteImport.update({
   path: '/accounting/balance-sheet',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SalesInvoicesIndexRoute = SalesInvoicesIndexRouteImport.update({
+  id: '/sales/invoices/',
+  path: '/sales/invoices/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SalesInvoicesIdRoute = SalesInvoicesIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => SalesInvoicesRoute,
+  id: '/sales/invoices/$id',
+  path: '/sales/invoices/$id',
+  getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
+  '/signup': typeof SignupRoute
   '/accounting/balance-sheet': typeof AccountingBalanceSheetRoute
   '/accounting/coa': typeof AccountingCoaRoute
+  '/accounting/contra': typeof AccountingContraRoute
+  '/accounting/cost-centers': typeof AccountingCostCentersRoute
+  '/accounting/exchange-rates': typeof AccountingExchangeRatesRoute
+  '/accounting/fixed-assets': typeof AccountingFixedAssetsRoute
   '/accounting/gst': typeof AccountingGstRoute
   '/accounting/journal': typeof AccountingJournalRoute
+  '/accounting/period-close': typeof AccountingPeriodCloseRoute
   '/accounting/pnl': typeof AccountingPnlRoute
   '/banking/connect': typeof BankingConnectRoute
+  '/banking/import': typeof BankingImportRoute
   '/banking/reconcile': typeof BankingReconcileRoute
   '/banking/review': typeof BankingReviewRoute
   '/inventory/warehouses': typeof InventoryWarehousesRoute
   '/purchases/bills': typeof PurchasesBillsRoute
+  '/purchases/debit-notes': typeof PurchasesDebitNotesRoute
+  '/purchases/grn': typeof PurchasesGrnRoute
+  '/purchases/orders': typeof PurchasesOrdersRoute
   '/purchases/vendors': typeof PurchasesVendorsRoute
+  '/reports/budget': typeof ReportsBudgetRoute
+  '/reports/cash-flow': typeof ReportsCashFlowRoute
+  '/reports/consolidation': typeof ReportsConsolidationRoute
+  '/reports/cost-center-pnl': typeof ReportsCostCenterPnlRoute
+  '/reports/day-book': typeof ReportsDayBookRoute
+  '/reports/forex': typeof ReportsForexRoute
+  '/reports/monthly-pnl': typeof ReportsMonthlyPnlRoute
+  '/reports/payables-aging': typeof ReportsPayablesAgingRoute
+  '/reports/ratios': typeof ReportsRatiosRoute
+  '/reports/stock': typeof ReportsStockRoute
+  '/reports/trial-balance': typeof ReportsTrialBalanceRoute
+  '/sales/credit-notes': typeof SalesCreditNotesRoute
   '/sales/customers': typeof SalesCustomersRoute
-  '/sales/invoices': typeof SalesInvoicesRouteWithChildren
+  '/sales/deliveries': typeof SalesDeliveriesRoute
+  '/sales/orders': typeof SalesOrdersRoute
+  '/sales/recurring': typeof SalesRecurringRoute
   '/ai/': typeof AiIndexRoute
   '/automation/': typeof AutomationIndexRoute
   '/banking/': typeof BankingIndexRoute
@@ -180,22 +361,48 @@ export interface FileRoutesByFullPath {
   '/sales/': typeof SalesIndexRoute
   '/settings/': typeof SettingsIndexRoute
   '/sales/invoices/$id': typeof SalesInvoicesIdRoute
+  '/sales/invoices/': typeof SalesInvoicesIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
+  '/signup': typeof SignupRoute
   '/accounting/balance-sheet': typeof AccountingBalanceSheetRoute
   '/accounting/coa': typeof AccountingCoaRoute
+  '/accounting/contra': typeof AccountingContraRoute
+  '/accounting/cost-centers': typeof AccountingCostCentersRoute
+  '/accounting/exchange-rates': typeof AccountingExchangeRatesRoute
+  '/accounting/fixed-assets': typeof AccountingFixedAssetsRoute
   '/accounting/gst': typeof AccountingGstRoute
   '/accounting/journal': typeof AccountingJournalRoute
+  '/accounting/period-close': typeof AccountingPeriodCloseRoute
   '/accounting/pnl': typeof AccountingPnlRoute
   '/banking/connect': typeof BankingConnectRoute
+  '/banking/import': typeof BankingImportRoute
   '/banking/reconcile': typeof BankingReconcileRoute
   '/banking/review': typeof BankingReviewRoute
   '/inventory/warehouses': typeof InventoryWarehousesRoute
   '/purchases/bills': typeof PurchasesBillsRoute
+  '/purchases/debit-notes': typeof PurchasesDebitNotesRoute
+  '/purchases/grn': typeof PurchasesGrnRoute
+  '/purchases/orders': typeof PurchasesOrdersRoute
   '/purchases/vendors': typeof PurchasesVendorsRoute
+  '/reports/budget': typeof ReportsBudgetRoute
+  '/reports/cash-flow': typeof ReportsCashFlowRoute
+  '/reports/consolidation': typeof ReportsConsolidationRoute
+  '/reports/cost-center-pnl': typeof ReportsCostCenterPnlRoute
+  '/reports/day-book': typeof ReportsDayBookRoute
+  '/reports/forex': typeof ReportsForexRoute
+  '/reports/monthly-pnl': typeof ReportsMonthlyPnlRoute
+  '/reports/payables-aging': typeof ReportsPayablesAgingRoute
+  '/reports/ratios': typeof ReportsRatiosRoute
+  '/reports/stock': typeof ReportsStockRoute
+  '/reports/trial-balance': typeof ReportsTrialBalanceRoute
+  '/sales/credit-notes': typeof SalesCreditNotesRoute
   '/sales/customers': typeof SalesCustomersRoute
-  '/sales/invoices': typeof SalesInvoicesRouteWithChildren
+  '/sales/deliveries': typeof SalesDeliveriesRoute
+  '/sales/orders': typeof SalesOrdersRoute
+  '/sales/recurring': typeof SalesRecurringRoute
   '/ai': typeof AiIndexRoute
   '/automation': typeof AutomationIndexRoute
   '/banking': typeof BankingIndexRoute
@@ -206,23 +413,49 @@ export interface FileRoutesByTo {
   '/sales': typeof SalesIndexRoute
   '/settings': typeof SettingsIndexRoute
   '/sales/invoices/$id': typeof SalesInvoicesIdRoute
+  '/sales/invoices': typeof SalesInvoicesIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
+  '/signup': typeof SignupRoute
   '/accounting/balance-sheet': typeof AccountingBalanceSheetRoute
   '/accounting/coa': typeof AccountingCoaRoute
+  '/accounting/contra': typeof AccountingContraRoute
+  '/accounting/cost-centers': typeof AccountingCostCentersRoute
+  '/accounting/exchange-rates': typeof AccountingExchangeRatesRoute
+  '/accounting/fixed-assets': typeof AccountingFixedAssetsRoute
   '/accounting/gst': typeof AccountingGstRoute
   '/accounting/journal': typeof AccountingJournalRoute
+  '/accounting/period-close': typeof AccountingPeriodCloseRoute
   '/accounting/pnl': typeof AccountingPnlRoute
   '/banking/connect': typeof BankingConnectRoute
+  '/banking/import': typeof BankingImportRoute
   '/banking/reconcile': typeof BankingReconcileRoute
   '/banking/review': typeof BankingReviewRoute
   '/inventory/warehouses': typeof InventoryWarehousesRoute
   '/purchases/bills': typeof PurchasesBillsRoute
+  '/purchases/debit-notes': typeof PurchasesDebitNotesRoute
+  '/purchases/grn': typeof PurchasesGrnRoute
+  '/purchases/orders': typeof PurchasesOrdersRoute
   '/purchases/vendors': typeof PurchasesVendorsRoute
+  '/reports/budget': typeof ReportsBudgetRoute
+  '/reports/cash-flow': typeof ReportsCashFlowRoute
+  '/reports/consolidation': typeof ReportsConsolidationRoute
+  '/reports/cost-center-pnl': typeof ReportsCostCenterPnlRoute
+  '/reports/day-book': typeof ReportsDayBookRoute
+  '/reports/forex': typeof ReportsForexRoute
+  '/reports/monthly-pnl': typeof ReportsMonthlyPnlRoute
+  '/reports/payables-aging': typeof ReportsPayablesAgingRoute
+  '/reports/ratios': typeof ReportsRatiosRoute
+  '/reports/stock': typeof ReportsStockRoute
+  '/reports/trial-balance': typeof ReportsTrialBalanceRoute
+  '/sales/credit-notes': typeof SalesCreditNotesRoute
   '/sales/customers': typeof SalesCustomersRoute
-  '/sales/invoices': typeof SalesInvoicesRouteWithChildren
+  '/sales/deliveries': typeof SalesDeliveriesRoute
+  '/sales/orders': typeof SalesOrdersRoute
+  '/sales/recurring': typeof SalesRecurringRoute
   '/ai/': typeof AiIndexRoute
   '/automation/': typeof AutomationIndexRoute
   '/banking/': typeof BankingIndexRoute
@@ -233,24 +466,50 @@ export interface FileRoutesById {
   '/sales/': typeof SalesIndexRoute
   '/settings/': typeof SettingsIndexRoute
   '/sales/invoices/$id': typeof SalesInvoicesIdRoute
+  '/sales/invoices/': typeof SalesInvoicesIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/login'
+    | '/signup'
     | '/accounting/balance-sheet'
     | '/accounting/coa'
+    | '/accounting/contra'
+    | '/accounting/cost-centers'
+    | '/accounting/exchange-rates'
+    | '/accounting/fixed-assets'
     | '/accounting/gst'
     | '/accounting/journal'
+    | '/accounting/period-close'
     | '/accounting/pnl'
     | '/banking/connect'
+    | '/banking/import'
     | '/banking/reconcile'
     | '/banking/review'
     | '/inventory/warehouses'
     | '/purchases/bills'
+    | '/purchases/debit-notes'
+    | '/purchases/grn'
+    | '/purchases/orders'
     | '/purchases/vendors'
+    | '/reports/budget'
+    | '/reports/cash-flow'
+    | '/reports/consolidation'
+    | '/reports/cost-center-pnl'
+    | '/reports/day-book'
+    | '/reports/forex'
+    | '/reports/monthly-pnl'
+    | '/reports/payables-aging'
+    | '/reports/ratios'
+    | '/reports/stock'
+    | '/reports/trial-balance'
+    | '/sales/credit-notes'
     | '/sales/customers'
-    | '/sales/invoices'
+    | '/sales/deliveries'
+    | '/sales/orders'
+    | '/sales/recurring'
     | '/ai/'
     | '/automation/'
     | '/banking/'
@@ -261,22 +520,48 @@ export interface FileRouteTypes {
     | '/sales/'
     | '/settings/'
     | '/sales/invoices/$id'
+    | '/sales/invoices/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/login'
+    | '/signup'
     | '/accounting/balance-sheet'
     | '/accounting/coa'
+    | '/accounting/contra'
+    | '/accounting/cost-centers'
+    | '/accounting/exchange-rates'
+    | '/accounting/fixed-assets'
     | '/accounting/gst'
     | '/accounting/journal'
+    | '/accounting/period-close'
     | '/accounting/pnl'
     | '/banking/connect'
+    | '/banking/import'
     | '/banking/reconcile'
     | '/banking/review'
     | '/inventory/warehouses'
     | '/purchases/bills'
+    | '/purchases/debit-notes'
+    | '/purchases/grn'
+    | '/purchases/orders'
     | '/purchases/vendors'
+    | '/reports/budget'
+    | '/reports/cash-flow'
+    | '/reports/consolidation'
+    | '/reports/cost-center-pnl'
+    | '/reports/day-book'
+    | '/reports/forex'
+    | '/reports/monthly-pnl'
+    | '/reports/payables-aging'
+    | '/reports/ratios'
+    | '/reports/stock'
+    | '/reports/trial-balance'
+    | '/sales/credit-notes'
     | '/sales/customers'
-    | '/sales/invoices'
+    | '/sales/deliveries'
+    | '/sales/orders'
+    | '/sales/recurring'
     | '/ai'
     | '/automation'
     | '/banking'
@@ -287,22 +572,48 @@ export interface FileRouteTypes {
     | '/sales'
     | '/settings'
     | '/sales/invoices/$id'
+    | '/sales/invoices'
   id:
     | '__root__'
     | '/'
+    | '/login'
+    | '/signup'
     | '/accounting/balance-sheet'
     | '/accounting/coa'
+    | '/accounting/contra'
+    | '/accounting/cost-centers'
+    | '/accounting/exchange-rates'
+    | '/accounting/fixed-assets'
     | '/accounting/gst'
     | '/accounting/journal'
+    | '/accounting/period-close'
     | '/accounting/pnl'
     | '/banking/connect'
+    | '/banking/import'
     | '/banking/reconcile'
     | '/banking/review'
     | '/inventory/warehouses'
     | '/purchases/bills'
+    | '/purchases/debit-notes'
+    | '/purchases/grn'
+    | '/purchases/orders'
     | '/purchases/vendors'
+    | '/reports/budget'
+    | '/reports/cash-flow'
+    | '/reports/consolidation'
+    | '/reports/cost-center-pnl'
+    | '/reports/day-book'
+    | '/reports/forex'
+    | '/reports/monthly-pnl'
+    | '/reports/payables-aging'
+    | '/reports/ratios'
+    | '/reports/stock'
+    | '/reports/trial-balance'
+    | '/sales/credit-notes'
     | '/sales/customers'
-    | '/sales/invoices'
+    | '/sales/deliveries'
+    | '/sales/orders'
+    | '/sales/recurring'
     | '/ai/'
     | '/automation/'
     | '/banking/'
@@ -313,23 +624,49 @@ export interface FileRouteTypes {
     | '/sales/'
     | '/settings/'
     | '/sales/invoices/$id'
+    | '/sales/invoices/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  LoginRoute: typeof LoginRoute
+  SignupRoute: typeof SignupRoute
   AccountingBalanceSheetRoute: typeof AccountingBalanceSheetRoute
   AccountingCoaRoute: typeof AccountingCoaRoute
+  AccountingContraRoute: typeof AccountingContraRoute
+  AccountingCostCentersRoute: typeof AccountingCostCentersRoute
+  AccountingExchangeRatesRoute: typeof AccountingExchangeRatesRoute
+  AccountingFixedAssetsRoute: typeof AccountingFixedAssetsRoute
   AccountingGstRoute: typeof AccountingGstRoute
   AccountingJournalRoute: typeof AccountingJournalRoute
+  AccountingPeriodCloseRoute: typeof AccountingPeriodCloseRoute
   AccountingPnlRoute: typeof AccountingPnlRoute
   BankingConnectRoute: typeof BankingConnectRoute
+  BankingImportRoute: typeof BankingImportRoute
   BankingReconcileRoute: typeof BankingReconcileRoute
   BankingReviewRoute: typeof BankingReviewRoute
   InventoryWarehousesRoute: typeof InventoryWarehousesRoute
   PurchasesBillsRoute: typeof PurchasesBillsRoute
+  PurchasesDebitNotesRoute: typeof PurchasesDebitNotesRoute
+  PurchasesGrnRoute: typeof PurchasesGrnRoute
+  PurchasesOrdersRoute: typeof PurchasesOrdersRoute
   PurchasesVendorsRoute: typeof PurchasesVendorsRoute
+  ReportsBudgetRoute: typeof ReportsBudgetRoute
+  ReportsCashFlowRoute: typeof ReportsCashFlowRoute
+  ReportsConsolidationRoute: typeof ReportsConsolidationRoute
+  ReportsCostCenterPnlRoute: typeof ReportsCostCenterPnlRoute
+  ReportsDayBookRoute: typeof ReportsDayBookRoute
+  ReportsForexRoute: typeof ReportsForexRoute
+  ReportsMonthlyPnlRoute: typeof ReportsMonthlyPnlRoute
+  ReportsPayablesAgingRoute: typeof ReportsPayablesAgingRoute
+  ReportsRatiosRoute: typeof ReportsRatiosRoute
+  ReportsStockRoute: typeof ReportsStockRoute
+  ReportsTrialBalanceRoute: typeof ReportsTrialBalanceRoute
+  SalesCreditNotesRoute: typeof SalesCreditNotesRoute
   SalesCustomersRoute: typeof SalesCustomersRoute
-  SalesInvoicesRoute: typeof SalesInvoicesRouteWithChildren
+  SalesDeliveriesRoute: typeof SalesDeliveriesRoute
+  SalesOrdersRoute: typeof SalesOrdersRoute
+  SalesRecurringRoute: typeof SalesRecurringRoute
   AiIndexRoute: typeof AiIndexRoute
   AutomationIndexRoute: typeof AutomationIndexRoute
   BankingIndexRoute: typeof BankingIndexRoute
@@ -339,10 +676,26 @@ export interface RootRouteChildren {
   ReportsIndexRoute: typeof ReportsIndexRoute
   SalesIndexRoute: typeof SalesIndexRoute
   SettingsIndexRoute: typeof SettingsIndexRoute
+  SalesInvoicesIdRoute: typeof SalesInvoicesIdRoute
+  SalesInvoicesIndexRoute: typeof SalesInvoicesIndexRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/signup': {
+      id: '/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -413,11 +766,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AiIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/sales/invoices': {
-      id: '/sales/invoices'
-      path: '/sales/invoices'
-      fullPath: '/sales/invoices'
-      preLoaderRoute: typeof SalesInvoicesRouteImport
+    '/sales/recurring': {
+      id: '/sales/recurring'
+      path: '/sales/recurring'
+      fullPath: '/sales/recurring'
+      preLoaderRoute: typeof SalesRecurringRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sales/orders': {
+      id: '/sales/orders'
+      path: '/sales/orders'
+      fullPath: '/sales/orders'
+      preLoaderRoute: typeof SalesOrdersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sales/deliveries': {
+      id: '/sales/deliveries'
+      path: '/sales/deliveries'
+      fullPath: '/sales/deliveries'
+      preLoaderRoute: typeof SalesDeliveriesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/sales/customers': {
@@ -427,11 +794,116 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SalesCustomersRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/sales/credit-notes': {
+      id: '/sales/credit-notes'
+      path: '/sales/credit-notes'
+      fullPath: '/sales/credit-notes'
+      preLoaderRoute: typeof SalesCreditNotesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reports/trial-balance': {
+      id: '/reports/trial-balance'
+      path: '/reports/trial-balance'
+      fullPath: '/reports/trial-balance'
+      preLoaderRoute: typeof ReportsTrialBalanceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reports/stock': {
+      id: '/reports/stock'
+      path: '/reports/stock'
+      fullPath: '/reports/stock'
+      preLoaderRoute: typeof ReportsStockRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reports/ratios': {
+      id: '/reports/ratios'
+      path: '/reports/ratios'
+      fullPath: '/reports/ratios'
+      preLoaderRoute: typeof ReportsRatiosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reports/payables-aging': {
+      id: '/reports/payables-aging'
+      path: '/reports/payables-aging'
+      fullPath: '/reports/payables-aging'
+      preLoaderRoute: typeof ReportsPayablesAgingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reports/monthly-pnl': {
+      id: '/reports/monthly-pnl'
+      path: '/reports/monthly-pnl'
+      fullPath: '/reports/monthly-pnl'
+      preLoaderRoute: typeof ReportsMonthlyPnlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reports/forex': {
+      id: '/reports/forex'
+      path: '/reports/forex'
+      fullPath: '/reports/forex'
+      preLoaderRoute: typeof ReportsForexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reports/day-book': {
+      id: '/reports/day-book'
+      path: '/reports/day-book'
+      fullPath: '/reports/day-book'
+      preLoaderRoute: typeof ReportsDayBookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reports/cost-center-pnl': {
+      id: '/reports/cost-center-pnl'
+      path: '/reports/cost-center-pnl'
+      fullPath: '/reports/cost-center-pnl'
+      preLoaderRoute: typeof ReportsCostCenterPnlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reports/consolidation': {
+      id: '/reports/consolidation'
+      path: '/reports/consolidation'
+      fullPath: '/reports/consolidation'
+      preLoaderRoute: typeof ReportsConsolidationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reports/cash-flow': {
+      id: '/reports/cash-flow'
+      path: '/reports/cash-flow'
+      fullPath: '/reports/cash-flow'
+      preLoaderRoute: typeof ReportsCashFlowRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reports/budget': {
+      id: '/reports/budget'
+      path: '/reports/budget'
+      fullPath: '/reports/budget'
+      preLoaderRoute: typeof ReportsBudgetRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/purchases/vendors': {
       id: '/purchases/vendors'
       path: '/purchases/vendors'
       fullPath: '/purchases/vendors'
       preLoaderRoute: typeof PurchasesVendorsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/purchases/orders': {
+      id: '/purchases/orders'
+      path: '/purchases/orders'
+      fullPath: '/purchases/orders'
+      preLoaderRoute: typeof PurchasesOrdersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/purchases/grn': {
+      id: '/purchases/grn'
+      path: '/purchases/grn'
+      fullPath: '/purchases/grn'
+      preLoaderRoute: typeof PurchasesGrnRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/purchases/debit-notes': {
+      id: '/purchases/debit-notes'
+      path: '/purchases/debit-notes'
+      fullPath: '/purchases/debit-notes'
+      preLoaderRoute: typeof PurchasesDebitNotesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/purchases/bills': {
@@ -462,6 +934,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BankingReconcileRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/banking/import': {
+      id: '/banking/import'
+      path: '/banking/import'
+      fullPath: '/banking/import'
+      preLoaderRoute: typeof BankingImportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/banking/connect': {
       id: '/banking/connect'
       path: '/banking/connect'
@@ -474,6 +953,13 @@ declare module '@tanstack/react-router' {
       path: '/accounting/pnl'
       fullPath: '/accounting/pnl'
       preLoaderRoute: typeof AccountingPnlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/accounting/period-close': {
+      id: '/accounting/period-close'
+      path: '/accounting/period-close'
+      fullPath: '/accounting/period-close'
+      preLoaderRoute: typeof AccountingPeriodCloseRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/accounting/journal': {
@@ -490,6 +976,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AccountingGstRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/accounting/fixed-assets': {
+      id: '/accounting/fixed-assets'
+      path: '/accounting/fixed-assets'
+      fullPath: '/accounting/fixed-assets'
+      preLoaderRoute: typeof AccountingFixedAssetsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/accounting/exchange-rates': {
+      id: '/accounting/exchange-rates'
+      path: '/accounting/exchange-rates'
+      fullPath: '/accounting/exchange-rates'
+      preLoaderRoute: typeof AccountingExchangeRatesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/accounting/cost-centers': {
+      id: '/accounting/cost-centers'
+      path: '/accounting/cost-centers'
+      fullPath: '/accounting/cost-centers'
+      preLoaderRoute: typeof AccountingCostCentersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/accounting/contra': {
+      id: '/accounting/contra'
+      path: '/accounting/contra'
+      fullPath: '/accounting/contra'
+      preLoaderRoute: typeof AccountingContraRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/accounting/coa': {
       id: '/accounting/coa'
       path: '/accounting/coa'
@@ -504,43 +1018,63 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AccountingBalanceSheetRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/sales/invoices/': {
+      id: '/sales/invoices/'
+      path: '/sales/invoices'
+      fullPath: '/sales/invoices/'
+      preLoaderRoute: typeof SalesInvoicesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/sales/invoices/$id': {
       id: '/sales/invoices/$id'
-      path: '/$id'
+      path: '/sales/invoices/$id'
       fullPath: '/sales/invoices/$id'
       preLoaderRoute: typeof SalesInvoicesIdRouteImport
-      parentRoute: typeof SalesInvoicesRoute
+      parentRoute: typeof rootRouteImport
     }
   }
 }
 
-interface SalesInvoicesRouteChildren {
-  SalesInvoicesIdRoute: typeof SalesInvoicesIdRoute
-}
-
-const SalesInvoicesRouteChildren: SalesInvoicesRouteChildren = {
-  SalesInvoicesIdRoute: SalesInvoicesIdRoute,
-}
-
-const SalesInvoicesRouteWithChildren = SalesInvoicesRoute._addFileChildren(
-  SalesInvoicesRouteChildren,
-)
-
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  LoginRoute: LoginRoute,
+  SignupRoute: SignupRoute,
   AccountingBalanceSheetRoute: AccountingBalanceSheetRoute,
   AccountingCoaRoute: AccountingCoaRoute,
+  AccountingContraRoute: AccountingContraRoute,
+  AccountingCostCentersRoute: AccountingCostCentersRoute,
+  AccountingExchangeRatesRoute: AccountingExchangeRatesRoute,
+  AccountingFixedAssetsRoute: AccountingFixedAssetsRoute,
   AccountingGstRoute: AccountingGstRoute,
   AccountingJournalRoute: AccountingJournalRoute,
+  AccountingPeriodCloseRoute: AccountingPeriodCloseRoute,
   AccountingPnlRoute: AccountingPnlRoute,
   BankingConnectRoute: BankingConnectRoute,
+  BankingImportRoute: BankingImportRoute,
   BankingReconcileRoute: BankingReconcileRoute,
   BankingReviewRoute: BankingReviewRoute,
   InventoryWarehousesRoute: InventoryWarehousesRoute,
   PurchasesBillsRoute: PurchasesBillsRoute,
+  PurchasesDebitNotesRoute: PurchasesDebitNotesRoute,
+  PurchasesGrnRoute: PurchasesGrnRoute,
+  PurchasesOrdersRoute: PurchasesOrdersRoute,
   PurchasesVendorsRoute: PurchasesVendorsRoute,
+  ReportsBudgetRoute: ReportsBudgetRoute,
+  ReportsCashFlowRoute: ReportsCashFlowRoute,
+  ReportsConsolidationRoute: ReportsConsolidationRoute,
+  ReportsCostCenterPnlRoute: ReportsCostCenterPnlRoute,
+  ReportsDayBookRoute: ReportsDayBookRoute,
+  ReportsForexRoute: ReportsForexRoute,
+  ReportsMonthlyPnlRoute: ReportsMonthlyPnlRoute,
+  ReportsPayablesAgingRoute: ReportsPayablesAgingRoute,
+  ReportsRatiosRoute: ReportsRatiosRoute,
+  ReportsStockRoute: ReportsStockRoute,
+  ReportsTrialBalanceRoute: ReportsTrialBalanceRoute,
+  SalesCreditNotesRoute: SalesCreditNotesRoute,
   SalesCustomersRoute: SalesCustomersRoute,
-  SalesInvoicesRoute: SalesInvoicesRouteWithChildren,
+  SalesDeliveriesRoute: SalesDeliveriesRoute,
+  SalesOrdersRoute: SalesOrdersRoute,
+  SalesRecurringRoute: SalesRecurringRoute,
   AiIndexRoute: AiIndexRoute,
   AutomationIndexRoute: AutomationIndexRoute,
   BankingIndexRoute: BankingIndexRoute,
@@ -550,6 +1084,8 @@ const rootRouteChildren: RootRouteChildren = {
   ReportsIndexRoute: ReportsIndexRoute,
   SalesIndexRoute: SalesIndexRoute,
   SettingsIndexRoute: SettingsIndexRoute,
+  SalesInvoicesIdRoute: SalesInvoicesIdRoute,
+  SalesInvoicesIndexRoute: SalesInvoicesIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

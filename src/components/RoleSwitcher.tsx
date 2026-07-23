@@ -1,8 +1,12 @@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
-  DropdownMenuLabel, DropdownMenuSeparator,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { ChevronDown, ShieldCheck, Check } from "lucide-react";
 import { ROLES, useRole, type Role } from "./RoleContext";
@@ -14,11 +18,16 @@ export function RoleSwitcher() {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="outline" size="sm" className="gap-2 h-9 border-dashed">
-          <span className={`flex h-5 w-5 items-center justify-center rounded text-[10px] font-semibold text-white ${meta.accent}`}>
+          <span
+            className={`flex h-5 w-5 items-center justify-center rounded text-[10px] font-semibold text-white ${meta.accent}`}
+          >
             {meta.initials}
           </span>
           <span className="hidden sm:inline text-xs font-medium">{meta.label}</span>
-          <Badge variant="secondary" className="text-[9px] uppercase tracking-wider hidden md:inline-flex">
+          <Badge
+            variant="secondary"
+            className="text-[9px] uppercase tracking-wider hidden md:inline-flex"
+          >
             Demo RBAC
           </Badge>
           <ChevronDown className="h-3.5 w-3.5 opacity-50" />
@@ -43,7 +52,9 @@ export function RoleSwitcher() {
             }}
             className="flex items-start gap-2.5 py-2"
           >
-            <span className={`mt-0.5 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded text-[11px] font-semibold text-white ${r.accent}`}>
+            <span
+              className={`mt-0.5 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded text-[11px] font-semibold text-white ${r.accent}`}
+            >
               {r.initials}
             </span>
             <div className="flex-1 min-w-0">

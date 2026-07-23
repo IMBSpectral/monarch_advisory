@@ -18,7 +18,7 @@
 
 import { and, eq, sql, inArray, isNull, lte, gte, desc } from "drizzle-orm";
 import type { DbOrTx } from "@/db/client";
-import { db } from "@/db/client";
+import { withOrg } from "@/db/client";
 import {
   accounts,
   auditLog,
@@ -234,7 +234,18 @@ async function assertAccountsPostable(
 export async function claimNextNumber(
   tx: DbOrTx,
   orgId: string,
-  documentType: "invoice" | "bill" | "payment" | "journal",
+  documentType:
+    | "invoice"
+    | "bill"
+    | "payment"
+    | "journal"
+    | "credit_note"
+    | "debit_note"
+    | "contra"
+    | "sales_order"
+    | "purchase_order"
+    | "grn"
+    | "delivery_note",
 ): Promise<string> {
   const rows = await tx.execute(
     sql`select id, prefix, next_number, pad_width
@@ -354,7 +365,7 @@ export async function postJournalEntry(
     return { entryId: entry.id, entryNumber };
   };
 
-  return existingTx ? run(existingTx) : db.transaction(run);
+  return existingTx ? run(existingTx) : withOrg(input.orgId, run);
 }
 
 /**
@@ -378,7 +389,7 @@ export async function reverseJournalEntry(args: {
     );
   }
 
-  return db.transaction(async (tx) => {
+  return withOrg(args.orgId, async (tx) => {
     const [original] = await tx
       .select()
       .from(journalEntries)
@@ -544,7 +555,8 @@ export async function writeAudit(
 export async function findUnbalancedEntries(
   orgId: string,
 ): Promise<Array<{ entryId: string; entryNumber: string; differenceMinor: bigint }>> {
-  const rows = await db.execute(sql`
+  const rows = await withOrg(orgId, (tx) =>
+    tx.execute(sql`
     select je.id            as entry_id,
            je.entry_number  as entry_number,
            sum(jl.amount_minor) as difference
@@ -554,7 +566,8 @@ export async function findUnbalancedEntries(
       and je.status in ('posted', 'reversed')
     group by je.id, je.entry_number
     having sum(jl.amount_minor) <> 0
-  `);
+  `),
+  );
 
   return (rows as unknown as Array<Record<string, string>>).map((r) => ({
     entryId: r.entry_id,
@@ -575,7 +588,8 @@ export async function verifyInvoiceBalances(orgId: string): Promise<
     actualMinor: bigint;
   }>
 > {
-  const rows = await db.execute(sql`
+  const rows = await withOrg(orgId, (tx) =>
+    tx.execute(sql`
     select i.id              as invoice_id,
            i.invoice_number  as invoice_number,
            i.amount_paid_minor as cached,
@@ -587,7 +601,8 @@ export async function verifyInvoiceBalances(orgId: string): Promise<
       and i.deleted_at is null
     group by i.id, i.invoice_number, i.amount_paid_minor
     having i.amount_paid_minor <> coalesce(sum(pa.amount_minor), 0)
-  `);
+  `),
+  );
 
   return (rows as unknown as Array<Record<string, string>>).map((r) => ({
     invoiceId: r.invoice_id,

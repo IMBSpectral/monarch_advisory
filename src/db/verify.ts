@@ -16,14 +16,20 @@
 import { eq } from "drizzle-orm";
 import { db, pgClient } from "./client";
 import { organizations } from "./schema";
+import { SEEDED_ORG_NAME } from "./fixtures";
 import { findUnbalancedEntries, verifyInvoiceBalances } from "@/server/ledger";
 import {
   getBalanceSheet,
+  getCashFlow,
   getDashboardSummary,
+  getPayablesAging,
   getProfitAndLoss,
   getReceivablesAging,
   getTrialBalance,
 } from "@/server/reports";
+import { getStockSummary, getStockValuationTotal, getFifoReconciliation } from "@/server/inventory";
+import { getTotalDepreciation } from "@/server/assets";
+import { withOrg } from "@/db/client";
 
 const inr = (minor: bigint) => {
   const negative = minor < 0n;
@@ -48,7 +54,14 @@ function check(label: string, passed: boolean, detail = "") {
 }
 
 async function main() {
-  const [org] = await db.select().from(organizations).limit(1);
+  // Pinned by name, not `limit(1)`. The seed also creates an empty second
+  // tenant to expose cross-org leakage, and an unordered limit(1) could pick it
+  // — every check below would then pass against no data at all.
+  const [org] = await db
+    .select()
+    .from(organizations)
+    .where(eq(organizations.name, SEEDED_ORG_NAME))
+    .limit(1);
   if (!org) throw new Error("No organization found. Run `bun run db:seed` first.");
 
   const asOf = "2026-07-31";
@@ -76,7 +89,7 @@ async function main() {
 
   /* ── 2. Trial balance ──────────────────────────────────────────────────*/
 
-  const tb = await getTrialBalance(org.id, asOf);
+  const tb = await getTrialBalance(db, org.id, asOf);
   check(
     "trial balance: debits == credits",
     tb.isBalanced,
@@ -85,7 +98,7 @@ async function main() {
 
   /* ── 3. Accounting equation ────────────────────────────────────────────*/
 
-  const bs = await getBalanceSheet(org.id, asOf);
+  const bs = await getBalanceSheet(db, org.id, asOf);
   check(
     "balance sheet: assets == liabilities + equity",
     bs.isBalanced,
@@ -109,7 +122,7 @@ async function main() {
     `  ${pad("", 6)}${pad("TOTAL", 28)}${padStart(inr(tb.totalDebitMinor), 18)}${padStart(inr(tb.totalCreditMinor), 18)}`,
   );
 
-  const pnl = await getProfitAndLoss(org.id, from, asOf);
+  const pnl = await getProfitAndLoss(db, org.id, from, asOf);
   console.log("\nProfit & Loss");
   for (const r of pnl.revenue) {
     console.log(`  ${pad(r.name.slice(0, 34), 36)}${padStart(inr(r.amountMinor), 18)}`);
@@ -150,7 +163,7 @@ async function main() {
     `  ${pad("  Liabilities + Equity", 36)}${padStart(inr(bs.totalLiabilitiesMinor + bs.totalEquityMinor), 18)}`,
   );
 
-  const aging = await getReceivablesAging(org.id, asOf);
+  const aging = await getReceivablesAging(db, org.id, asOf);
   console.log("\nA/R Aging");
   console.log(
     `  ${pad("Customer", 26)}${padStart("Current", 14)}${padStart("1-30", 14)}${padStart("31-60", 14)}${padStart("61-90", 12)}${padStart("90+", 12)}${padStart("Total", 14)}`,
@@ -181,7 +194,75 @@ async function main() {
     `control ${inr(arControl)} vs subledger ${inr(aging.totals.totalMinor)}`,
   );
 
-  const dash = await getDashboardSummary(org.id, from, asOf);
+  /* ── Payables aging nets to the A/P control account ────────────────────*/
+
+  const payAging = await withOrg(org.id, (tx) => getPayablesAging(tx, org.id, asOf));
+  const apAccount = tb.rows.find((r) => r.subtype === "accounts_payable");
+  const apControl = apAccount ? apAccount.creditMinor - apAccount.debitMinor : 0n;
+  check(
+    "A/P control account == payables aging total",
+    apControl === payAging.totals.totalMinor,
+    `control ${inr(apControl)} vs subledger ${inr(payAging.totals.totalMinor)}`,
+  );
+
+  /* ── Cash flow reconciles to the movement in cash balances ─────────────*/
+
+  const cf = await withOrg(org.id, (tx) => getCashFlow(tx, org.id, from, asOf));
+  check(
+    "cash flow: operating + investing + financing == Δcash",
+    cf.reconciles,
+    `net ${inr(cf.netCashMinor)} vs Δcash ${inr(cf.closingCashMinor - cf.openingCashMinor)}`,
+  );
+
+  /* ── Inventory: stock value == Inventory control account ───────────────*/
+
+  // The cached stock levels are all-time (point-in-now), so compare against the
+  // all-time inventory-account balance, not the as-of trial balance — otherwise
+  // a transaction dated after `asOf` would look like drift when it isn't.
+  const tbAll = await getTrialBalance(db, org.id, "2099-12-31");
+  const inventoryAccount = tbAll.rows.find((r) => r.subtype === "inventory");
+  const inventoryControl = inventoryAccount
+    ? inventoryAccount.debitMinor - inventoryAccount.creditMinor
+    : 0n;
+  const stockValue = await withOrg(org.id, (tx) => getStockValuationTotal(tx, org.id));
+  check(
+    "Inventory control account == stock ledger value",
+    inventoryControl === stockValue,
+    `control ${inr(inventoryControl)} vs stock ${inr(stockValue)}`,
+  );
+
+  /* ── Fixed assets: accumulated depreciation ties to the register ───────*/
+
+  const accDepAccount = tbAll.rows.find((r) => r.subtype === "accumulated_depreciation");
+  const accDepControl = accDepAccount ? accDepAccount.creditMinor - accDepAccount.debitMinor : 0n;
+  const totalDep = await withOrg(org.id, (tx) => getTotalDepreciation(tx, org.id));
+  check(
+    "Accumulated depreciation == sum of depreciation charges",
+    accDepControl === totalDep,
+    `control ${inr(accDepControl)} vs register ${inr(totalDep)}`,
+  );
+
+  const fifo = await withOrg(org.id, (tx) => getFifoReconciliation(tx, org.id));
+  check(
+    "FIFO layers == cached level value",
+    fifo.layerValueMinor === fifo.levelValueMinor,
+    `layers ${inr(fifo.layerValueMinor)} vs level ${inr(fifo.levelValueMinor)}`,
+  );
+
+  const stock = await withOrg(org.id, (tx) => getStockSummary(tx, org.id));
+  console.log("\nStock Summary");
+  console.log(
+    `  ${pad("Item", 32)}${padStart("On hand", 12)}${padStart("Avg cost", 16)}${padStart("Value", 18)}`,
+  );
+  for (const s of stock) {
+    console.log(
+      `  ${pad(s.name.slice(0, 30), 32)}${padStart(s.onHandQty, 12)}` +
+        `${padStart(inr(s.avgCostMinor), 16)}${padStart(inr(s.valueMinor), 18)}`,
+    );
+  }
+  console.log(`  ${pad("TOTAL", 32)}${padStart("", 28)}${padStart(inr(stockValue), 18)}`);
+
+  const dash = await getDashboardSummary(db, org.id, from, asOf);
   console.log("\nDashboard");
   console.log(`  ${pad("Cash & Bank", 28)}${padStart(inr(dash.cashMinor), 18)}`);
   console.log(`  ${pad("Receivables", 28)}${padStart(inr(dash.receivablesMinor), 18)}`);

@@ -1,0 +1,14 @@
+node_modules
+.output
+.nitro
+.tanstack
+.git
+.env
+*.local
+e2e/.auth
+test-results
+playwright-report
+dist
+dist-ssr
+*.log
+.DS_Store

@@ -135,6 +135,9 @@ const groups = [
   },
 ];
 
+/** Every nav destination, flattened — used to pick the single best-matching item. */
+const ALL_NAV_URLS = groups.flatMap((g) => g.items.map((i) => i.url));
+
 const ROLE_LABEL: Record<Role, string> = {
   owner: "Owner",
   admin: "Admin",
@@ -146,7 +149,19 @@ const ROLE_LABEL: Record<Role, string> = {
 export function AppSidebar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const session = useSession();
-  const isActive = (url: string) => (url === "/" ? pathname === "/" : pathname.startsWith(url));
+
+  // Highlight only the most specific matching nav item. A child route such as
+  // /sales/invoices matches both "Invoices" (/sales/invoices) and "Sales
+  // Dashboard" (/sales) by prefix; picking the longest match means the child
+  // wins and the parent index route no longer lights up alongside it. "/" is an
+  // exact match only, since it prefixes everything.
+  const matchesPath = (url: string) =>
+    url === "/" ? pathname === "/" : pathname === url || pathname.startsWith(url + "/");
+  const activeUrl = ALL_NAV_URLS.filter(matchesPath).reduce<string | null>(
+    (best, url) => (best && best.length >= url.length ? best : url),
+    null,
+  );
+  const isActive = (url: string) => url === activeUrl;
 
   // Capability checks are hooks, so they must run unconditionally and in a
   // stable order — resolve them all up front rather than inside the map.

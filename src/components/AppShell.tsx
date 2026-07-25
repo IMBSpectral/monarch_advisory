@@ -1,10 +1,29 @@
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "./AppSidebar";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Search, Bell, Plus, Sparkles, Building2 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Bell,
+  Plus,
+  Sparkles,
+  Building2,
+  FileText,
+  Package,
+  Users,
+  ReceiptText,
+  Truck,
+} from "lucide-react";
 import { useState, type ReactNode } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import { AIAssistant } from "./AIAssistant";
+import { GlobalSearch } from "./GlobalSearch";
 import { InvestorTour } from "./InvestorTour";
 import { RoleProvider } from "./RoleContext";
 import { UserMenu } from "./UserMenu";
@@ -40,21 +59,10 @@ function AppShellInner({ children }: { children: ReactNode }) {
               <Building2 className="text-brand h-4 w-4" />
               <span className="text-sm font-medium">{session?.orgName ?? "—"}</span>
             </div>
-            <div className="relative flex-1 max-w-md ml-2">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search invoices, items, customers…"
-                className="pl-9 h-9 bg-muted/40 border-0"
-              />
-              <kbd className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 hidden md:inline-flex h-5 items-center gap-0.5 rounded border bg-background px-1.5 text-[10px] text-muted-foreground">
-                ⌘K
-              </kbd>
-            </div>
+            <GlobalSearch />
             <div className="flex items-center gap-1.5 ml-auto">
               <UserMenu />
-              <Button variant="outline" size="sm" className="gap-1.5 hidden md:flex">
-                <Plus className="h-4 w-4" /> Create
-              </Button>
+              <CreateMenu />
               <Button
                 size="sm"
                 onClick={() => setAiOpen(true)}
@@ -74,6 +82,41 @@ function AppShellInner({ children }: { children: ReactNode }) {
       <AIAssistant open={aiOpen} onOpenChange={setAiOpen} />
       <InvestorTour />
     </SidebarProvider>
+  );
+}
+
+/**
+ * The header "Create" menu. Each entry routes to the screen that owns the
+ * relevant "New …" dialog, so the button is a real shortcut into the create
+ * flows rather than a dead control.
+ */
+function CreateMenu() {
+  const navigate = useNavigate();
+  const items = [
+    { icon: FileText, label: "Invoice", to: "/sales/invoices" as const },
+    { icon: ReceiptText, label: "Bill", to: "/purchases/bills" as const },
+    { icon: Package, label: "Item", to: "/inventory" as const },
+    { icon: Users, label: "Customer", to: "/sales/customers" as const },
+    { icon: Truck, label: "Vendor", to: "/purchases/vendors" as const },
+  ];
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" size="sm" className="gap-1.5 hidden md:flex">
+          <Plus className="h-4 w-4" /> Create
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-44">
+        <DropdownMenuLabel>Create new</DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        {items.map((it) => (
+          <DropdownMenuItem key={it.label} onSelect={() => navigate({ to: it.to })}>
+            <it.icon className="mr-2 h-4 w-4 text-muted-foreground" />
+            {it.label}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 

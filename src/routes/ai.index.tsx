@@ -26,6 +26,7 @@ import {
 import { useState } from "react";
 import { toast } from "sonner";
 import { cashForecast, inr } from "@/data/mock";
+import { useSession } from "@/components/SessionContext";
 
 export const Route = createFileRoute("/ai/")({ component: AI });
 
@@ -37,6 +38,9 @@ const ASSISTANT_REPLY =
 function AI() {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const session = useSession();
+  // Greet the actual signed-in user, not a hardcoded demo persona.
+  const firstName = session?.name?.trim().split(/\s+/)[0] || "there";
 
   const send = () => {
     const text = input.trim();
@@ -71,8 +75,8 @@ function AI() {
             <div className="p-4 space-y-4 min-h-[420px]">
               <div>
                 <div className="max-w-[80%] rounded-2xl rounded-tl-sm bg-muted px-4 py-3 text-sm">
-                  Hi Arjun 👋 I've reviewed today's activity. Ask me anything about your books, cash
-                  position, or vendors.
+                  Hi {firstName} 👋 I've reviewed today's activity. Ask me anything about your
+                  books, cash position, or vendors.
                 </div>
               </div>
               <div className="flex justify-end">

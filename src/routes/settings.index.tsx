@@ -225,7 +225,18 @@ function MemberRow({ member, isOnlyOwner }: { member: Member; isOnlyOwner: boole
         )}
       </TableCell>
       <TableCell className="text-muted-foreground">
-        {new Date(member.joinedAt).toLocaleDateString()}
+        {/*
+          Explicit locale + timeZone, not the runtime defaults. `toLocaleDateString()`
+          with no args formats using the host's locale and zone, which differ between
+          the SSR server and the browser — producing a hydration text mismatch
+          (React #418). Pinning both makes server and client render identical text.
+        */}
+        {new Date(member.joinedAt).toLocaleDateString("en-IN", {
+          timeZone: "Asia/Kolkata",
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+        })}
       </TableCell>
     </TableRow>
   );

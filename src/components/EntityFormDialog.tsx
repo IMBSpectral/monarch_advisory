@@ -37,8 +37,11 @@ export function EntityFormDialog({
   successMessage,
   onSubmit,
   children,
+  open: controlledOpen,
+  onOpenChange,
 }: {
-  trigger: ReactNode;
+  /** Optional — omit when the dialog's open state is controlled by the parent. */
+  trigger?: ReactNode;
   title: string;
   description?: string;
   submitLabel?: string;
@@ -46,8 +49,17 @@ export function EntityFormDialog({
   /** Perform the write. Throw to surface an error and keep the dialog open. */
   onSubmit: () => Promise<void>;
   children: ReactNode;
+  /** Controlled open state. When provided, the parent owns open/close. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : internalOpen;
+  const setOpen = (next: boolean) => {
+    if (!isControlled) setInternalOpen(next);
+    onOpenChange?.(next);
+  };
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -74,7 +86,7 @@ export function EntityFormDialog({
         if (!next) setError(null);
       }}
     >
-      <DialogTrigger asChild>{trigger}</DialogTrigger>
+      {trigger ? <DialogTrigger asChild>{trigger}</DialogTrigger> : null}
       <DialogContent className="sm:max-w-lg">
         <form onSubmit={handleSubmit}>
           <DialogHeader>

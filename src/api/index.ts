@@ -23,7 +23,7 @@
  */
 
 import { createServerFn } from "@tanstack/react-start";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db, withOrg } from "@/db/client";
 import {
@@ -47,6 +47,7 @@ import {
   getTrialBalance,
 } from "@/server/reports";
 import { getStockSummary } from "@/server/inventory";
+import { listContacts, listItems } from "@/server/entities";
 import { createInvoice, postInvoice, recordCustomerPayment } from "@/server/invoicing";
 import { assertCan } from "@/server/auth";
 import { currentOrgId, requireAuth, requirePermission } from "@/server/session";
@@ -421,6 +422,65 @@ export const fetchInvoices = createServerFn({ method: "GET" })
       totalMinor: undefined,
       amountPaidMinor: undefined,
     }));
+  });
+
+/**
+ * Global header search — a small, unified lookup across invoices, items and
+ * contacts for the ⌘K box in the app shell. Read-only, tenant-scoped, and
+ * capped at a handful of rows per group so the dropdown stays snappy. Returns
+ * everything the client needs to render a row and route to it on click.
+ */
+export const globalSearch = createServerFn({ method: "GET" })
+  .validator(z.object({ q: z.string() }))
+  .handler(async ({ data }) => {
+    const q = data.q.trim();
+    // Below two chars the result set is too broad to be useful; skip the queries.
+    if (q.length < 2) return { invoices: [], items: [], contacts: [] };
+
+    const orgId = await currentOrgId();
+
+    const [itemRows, contactRows, invoiceRows] = await Promise.all([
+      listItems(orgId, { search: q }),
+      listContacts(orgId, { search: q }),
+      withOrg(orgId, (tx) =>
+        tx
+          .select({
+            id: invoices.id,
+            invoiceNumber: invoices.invoiceNumber,
+            customerName: contacts.displayName,
+            status: invoices.status,
+          })
+          .from(invoices)
+          .innerJoin(contacts, eq(contacts.id, invoices.contactId))
+          .where(
+            and(
+              eq(invoices.orgId, orgId),
+              or(ilike(invoices.invoiceNumber, `%${q}%`), ilike(contacts.displayName, `%${q}%`)),
+            ),
+          )
+          .orderBy(desc(invoices.invoiceDate))
+          .limit(6),
+      ),
+    ]);
+
+    return {
+      invoices: invoiceRows.map((r) => ({
+        id: r.id,
+        label: r.invoiceNumber,
+        sub: r.customerName,
+        status: r.status,
+      })),
+      items: itemRows.slice(0, 6).map((i) => ({
+        id: i.id,
+        label: i.name,
+        sub: i.sku ?? "",
+      })),
+      contacts: contactRows.slice(0, 6).map((c) => ({
+        id: c.id,
+        label: c.displayName,
+        sub: c.type,
+      })),
+    };
   });
 
 /**

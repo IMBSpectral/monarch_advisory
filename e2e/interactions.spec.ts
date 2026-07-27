@@ -424,6 +424,19 @@ test.describe("reports — custom date range", () => {
     const asOf = new URL(page.url()).searchParams.get("asOf")!;
     await expect(page.getByText(`As of ${asOf}`).first()).toBeVisible();
   });
+
+  test("GST: a preset scopes the return period from the ledger", async ({ page }) => {
+    await page.goto("/accounting/gst");
+    await page.getByRole("button", { name: /This Financial Year:/ }).click();
+    await page.getByRole("button", { name: "This Month", exact: true }).click();
+    await expect(page).toHaveURL(/preset=this_month&from=\d{4}-\d{2}-01&to=\d{4}-\d{2}-\d{2}/);
+    // Summary card and net-payable line reflect the chosen period.
+    const to = new URL(page.url()).searchParams.get("to")!;
+    await expect(
+      page.getByRole("heading", { name: new RegExp(`GST Summary.*${to}`) }),
+    ).toBeVisible();
+    await expect(page.getByText("Net GST Payable")).toBeVisible();
+  });
 });
 
 test.describe("header — global search & create menu", () => {

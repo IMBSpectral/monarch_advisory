@@ -1,42 +1,113 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { addMonths, format, parseISO } from "date-fns";
+import { FileText, Download, Info, Printer } from "lucide-react";
+
 import { PageHeader } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { FileText, Download, Info } from "lucide-react";
-import { inr } from "@/data/mock";
+import { fetchGstSummary } from "@/api";
+import { formatMinor } from "@/lib/money";
 import { downloadCsv } from "@/lib/export";
+import { ReportPeriodPicker } from "@/components/ReportPeriodPicker";
+import { DEFAULT_PRESET, type PresetKey } from "@/lib/report-periods";
 
-export const Route = createFileRoute("/accounting/gst")({ component: GST });
+type GstSearch = { preset?: PresetKey; from?: string; to?: string };
 
-const returns = [
-  { name: "GSTR-1", desc: "Outward supplies", due: "Aug 11", status: "Ready", amount: 1840000 },
-  { name: "GSTR-3B", desc: "Monthly summary", due: "Aug 20", status: "Draft", amount: 720000 },
-  { name: "GSTR-2B", desc: "Auto-drafted ITC", due: "—", status: "Reconciled", amount: 620000 },
-  { name: "GSTR-9", desc: "Annual return", due: "Dec 31", status: "Pending", amount: 0 },
-];
+export const Route = createFileRoute("/accounting/gst")({
+  // Same period model as the P&L: the window lives in the URL, so a GST period
+  // is shareable, refresh-safe, and re-fetches when it changes.
+  validateSearch: (search: Record<string, unknown>): GstSearch => ({
+    preset: typeof search.preset === "string" ? (search.preset as PresetKey) : undefined,
+    from: typeof search.from === "string" ? search.from : undefined,
+    to: typeof search.to === "string" ? search.to : undefined,
+  }),
+  loaderDeps: ({ search }) => ({ from: search.from, to: search.to }),
+  loader: async ({ deps }) => fetchGstSummary({ data: { from: deps.from, to: deps.to } }),
+  component: GST,
+});
 
-const summary = [
-  { l: "Output CGST", v: 920000 },
-  { l: "Output SGST", v: 920000 },
-  { l: "Output IGST", v: 0 },
-  { l: "Input CGST", v: 310000 },
-  { l: "Input SGST", v: 310000 },
-  { l: "Input IGST", v: 0 },
-  { l: "Net Payable", v: 1220000, hi: true },
-];
+/** GST filing due dates key off the month AFTER the period end. */
+function dueDate(to: string, day: number): string {
+  const next = addMonths(parseISO(to), 1);
+  return format(new Date(next.getFullYear(), next.getMonth(), day), "dd MMM yyyy");
+}
 
 function GST() {
+  const g = Route.useLoaderData();
+  const search = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
+  const preset = search.preset ?? DEFAULT_PRESET;
+  const periodLabel = `${g.from} – ${g.to}`;
+
+  // Headline amount per return, straight from the period's ledger figures.
+  const returns = [
+    {
+      name: "GSTR-1",
+      desc: "Outward supplies",
+      due: dueDate(g.to, 11),
+      status: "Ready",
+      amount: g.taxableSales,
+    },
+    {
+      name: "GSTR-3B",
+      desc: "Monthly summary",
+      due: dueDate(g.to, 20),
+      status: "Draft",
+      amount: g.netPayable,
+    },
+    {
+      name: "GSTR-2B",
+      desc: "Auto-drafted ITC",
+      due: "—",
+      status: "Reconciled",
+      amount: g.inputTax,
+    },
+    { name: "GSTR-9", desc: "Annual return", due: "31 Dec", status: "Pending", amount: "0" },
+  ];
+
+  const summary: { l: string; v: string; hi?: boolean }[] = [
+    { l: "Taxable outward supplies", v: g.taxableSales },
+    { l: "Output CGST", v: g.output.cgst },
+    { l: "Output SGST", v: g.output.sgst },
+    { l: "Output IGST", v: "0" },
+    { l: "Input CGST (ITC)", v: g.input.cgst },
+    { l: "Input SGST (ITC)", v: g.input.sgst },
+    { l: "Input IGST (ITC)", v: "0" },
+    { l: "Net GST Payable", v: g.netPayable, hi: true },
+  ];
+
+  const actions = (
+    <div className="flex items-center gap-2 print:hidden">
+      <ReportPeriodPicker
+        mode="range"
+        preset={preset}
+        from={g.from}
+        to={g.to}
+        onApply={({ preset, from, to }) => navigate({ search: { preset, from, to } })}
+      />
+      <Button variant="outline" size="sm" onClick={() => window.print()}>
+        <Printer className="mr-1.5 h-4 w-4" />
+        Print / PDF
+      </Button>
+    </div>
+  );
+
   return (
     <>
-      <PageHeader title="GST Returns" subtitle="GSTR-1, 3B, 2B & 9 overview" />
+      <PageHeader
+        title="GST Returns"
+        subtitle={`GSTR-1, 3B, 2B & 9 · ${periodLabel}`}
+        actions={actions}
+      />
       <div className="p-6 space-y-4">
         <div className="flex items-start gap-2 rounded-lg border border-brand/20 bg-brand/5 px-4 py-3 text-sm">
           <Info className="mt-0.5 h-4 w-4 flex-shrink-0 text-brand" />
           <p className="text-muted-foreground">
-            GST figures shown are <span className="font-medium text-foreground">indicative</span>;
-            statutory filing requires a GSP (GST Suvidha Provider) integration. Use Download to
-            export the summary for your CA or filing tool.
+            Figures are computed from your ledger for the selected period. The CGST/SGST split
+            assumes <span className="font-medium text-foreground">intra-state</span> supply (place
+            of supply isn't tracked), and statutory filing requires a GSP (GST Suvidha Provider)
+            integration — use Download to export the summary for your CA or filing tool.
           </p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -58,8 +129,8 @@ function GST() {
               <p className="text-sm text-muted-foreground mt-2">
                 Due: <span className="text-foreground font-medium">{r.due}</span>
               </p>
-              {r.amount > 0 && (
-                <p className="text-lg font-semibold tabular-nums mt-1">{inr(r.amount)}</p>
+              {r.amount !== "0" && (
+                <p className="text-lg font-semibold tabular-nums mt-1">{formatMinor(r.amount)}</p>
               )}
             </Card>
           ))}
@@ -67,17 +138,19 @@ function GST() {
         <Card className="p-6">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="font-semibold">GST Summary — July 2026</h3>
-              <p className="text-xs text-muted-foreground">Ready to file GSTR-3B</p>
+              <h3 className="font-semibold">GST Summary — {periodLabel}</h3>
+              <p className="text-xs text-muted-foreground">
+                Output tax, input tax credit, and net payable
+              </p>
             </div>
             <Button
               size="sm"
-              className="bg-gradient-brand text-white"
+              className="bg-gradient-brand text-white print:hidden"
               onClick={() =>
                 downloadCsv(
-                  "gst-summary-jul-2026.csv",
-                  ["Line item", "Amount (INR)"],
-                  summary.map((s) => [s.l, String(s.v)]),
+                  `gst-summary_${g.from}_to_${g.to}.csv`,
+                  ["Line item", "Amount"],
+                  summary.map((s) => [s.l, formatMinor(s.v)]),
                 )
               }
             >
@@ -93,7 +166,7 @@ function GST() {
               >
                 <span className={s.hi ? "font-semibold" : "text-muted-foreground"}>{s.l}</span>
                 <span className={`tabular-nums ${s.hi ? "font-bold text-brand" : ""}`}>
-                  {inr(s.v)}
+                  {formatMinor(s.v)}
                 </span>
               </div>
             ))}

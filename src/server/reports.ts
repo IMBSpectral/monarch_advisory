@@ -343,6 +343,79 @@ export async function getBalanceSheet(
 }
 
 /* ────────────────────────────────────────────────────────────────────────────
+ * GST summary
+ * ──────────────────────────────────────────────────────────────────────────*/
+
+export type GstSummary = {
+  from: string;
+  to: string;
+  /** Taxable value of outward supplies (sales, excl. tax) in the period. */
+  taxableSalesMinor: bigint;
+  /** GST collected on sales — the output-tax liability that accrued. */
+  outputTaxMinor: bigint;
+  /** Input tax credit availed on purchases in the period. */
+  inputTaxMinor: bigint;
+  /** Output tax net of ITC — what is owed to the authority for the period. */
+  netPayableMinor: bigint;
+};
+
+/**
+ * GST for a period, derived from the ledger — not a stored figure.
+ *
+ * This chart of accounts keeps a single "GST Payable" control account: sales
+ * CREDIT it (output tax) and purchases DEBIT it (reclaimable input tax / ITC).
+ * So the two sides are recoverable from that one account by the sign of each
+ * movement in the window. Only the *system* tax_payable account is GST — TDS
+ * Payable shares the subtype but is excluded by `is_system`.
+ *
+ * The model does not track place of supply, so there is no CGST/SGST/IGST split
+ * here; the presentation layer notes the intra-state assumption it makes.
+ */
+export async function getGstSummary(
+  tx: DbOrTx,
+  orgId: string,
+  from: string,
+  to: string,
+): Promise<GstSummary> {
+  const [taxRow] = (await tx.execute(sql`
+    select
+      coalesce(-sum(jl.amount_minor) filter (where jl.amount_minor < 0), 0) as output_tax,
+      coalesce( sum(jl.amount_minor) filter (where jl.amount_minor > 0), 0) as input_tax
+    from journal_lines jl
+    join journal_entries je on je.id = jl.entry_id
+    join accounts a         on a.id = jl.account_id
+    where jl.org_id = ${orgId}
+      and ${POSTED}
+      and je.entry_date between ${from} and ${to}
+      and a.subtype = 'tax_payable'
+      and a.is_system = true
+  `)) as unknown as Row[];
+
+  const [salesRow] = (await tx.execute(sql`
+    select coalesce(-sum(jl.amount_minor), 0) as taxable_sales
+    from journal_lines jl
+    join journal_entries je on je.id = jl.entry_id
+    join accounts a         on a.id = jl.account_id
+    where jl.org_id = ${orgId}
+      and ${POSTED}
+      and je.entry_date between ${from} and ${to}
+      and a.subtype = 'operating_revenue'
+  `)) as unknown as Row[];
+
+  const outputTaxMinor = toBig(taxRow?.output_tax);
+  const inputTaxMinor = toBig(taxRow?.input_tax);
+
+  return {
+    from,
+    to,
+    taxableSalesMinor: toBig(salesRow?.taxable_sales),
+    outputTaxMinor,
+    inputTaxMinor,
+    netPayableMinor: outputTaxMinor - inputTaxMinor,
+  };
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
  * Aging
  * ──────────────────────────────────────────────────────────────────────────*/
 
@@ -527,7 +600,14 @@ export async function getPayablesAging(
       over90Minor: acc.over90Minor + r.over90Minor,
       totalMinor: acc.totalMinor + r.totalMinor,
     }),
-    { currentMinor: 0n, days1to30Minor: 0n, days31to60Minor: 0n, days61to90Minor: 0n, over90Minor: 0n, totalMinor: 0n },
+    {
+      currentMinor: 0n,
+      days1to30Minor: 0n,
+      days31to60Minor: 0n,
+      days61to90Minor: 0n,
+      over90Minor: 0n,
+      totalMinor: 0n,
+    },
   );
 
   return { rows, totals };
@@ -646,7 +726,9 @@ export async function getCashFlow(
   `)) as unknown as Array<{ category: string; label: string; cash_effect: string }>;
 
   const bucket = (cat: string) =>
-    rows.filter((r) => r.category === cat).map((r) => ({ label: r.label, amountMinor: toBig(r.cash_effect) }));
+    rows
+      .filter((r) => r.category === cat)
+      .map((r) => ({ label: r.label, amountMinor: toBig(r.cash_effect) }));
 
   const operating = bucket("operating");
   const investing = bucket("investing");
@@ -696,7 +778,12 @@ export async function getCashFlow(
 
 export type RatioRow = { label: string; value: number; format: "x" | "%" | "money"; hint: string };
 
-const CURRENT_ASSET_SUBTYPES = ["cash_and_bank", "accounts_receivable", "inventory", "other_current_asset"];
+const CURRENT_ASSET_SUBTYPES = [
+  "cash_and_bank",
+  "accounts_receivable",
+  "inventory",
+  "other_current_asset",
+];
 const CURRENT_LIABILITY_SUBTYPES = [
   "accounts_payable",
   "tax_payable",
@@ -733,13 +820,48 @@ export async function getFinancialRatios(
   const pct = (num: bigint, den: bigint) => (den === 0n ? 0 : (Number(num) / Number(den)) * 100);
 
   const ratios: RatioRow[] = [
-    { label: "Current ratio", value: ratio(currentAssets, currentLiabilities), format: "x", hint: "Current assets ÷ current liabilities" },
-    { label: "Quick ratio", value: ratio(currentAssets - inventory, currentLiabilities), format: "x", hint: "Liquid assets (ex-inventory) ÷ current liabilities" },
-    { label: "Working capital", value: Number(currentAssets - currentLiabilities), format: "money", hint: "Current assets − current liabilities" },
-    { label: "Gross margin", value: pct(pnl.grossProfitMinor, revenue), format: "%", hint: "Gross profit ÷ revenue" },
-    { label: "Net margin", value: pct(pnl.netProfitMinor, revenue), format: "%", hint: "Net profit ÷ revenue" },
-    { label: "Debt to equity", value: ratio(totalLiab, totalEquity), format: "x", hint: "Total liabilities ÷ total equity" },
-    { label: "Return on equity", value: pct(pnl.netProfitMinor, totalEquity), format: "%", hint: "Net profit ÷ total equity" },
+    {
+      label: "Current ratio",
+      value: ratio(currentAssets, currentLiabilities),
+      format: "x",
+      hint: "Current assets ÷ current liabilities",
+    },
+    {
+      label: "Quick ratio",
+      value: ratio(currentAssets - inventory, currentLiabilities),
+      format: "x",
+      hint: "Liquid assets (ex-inventory) ÷ current liabilities",
+    },
+    {
+      label: "Working capital",
+      value: Number(currentAssets - currentLiabilities),
+      format: "money",
+      hint: "Current assets − current liabilities",
+    },
+    {
+      label: "Gross margin",
+      value: pct(pnl.grossProfitMinor, revenue),
+      format: "%",
+      hint: "Gross profit ÷ revenue",
+    },
+    {
+      label: "Net margin",
+      value: pct(pnl.netProfitMinor, revenue),
+      format: "%",
+      hint: "Net profit ÷ revenue",
+    },
+    {
+      label: "Debt to equity",
+      value: ratio(totalLiab, totalEquity),
+      format: "x",
+      hint: "Total liabilities ÷ total equity",
+    },
+    {
+      label: "Return on equity",
+      value: pct(pnl.netProfitMinor, totalEquity),
+      format: "%",
+      hint: "Net profit ÷ total equity",
+    },
   ];
 
   return { ratios, currentAssetsMinor: currentAssets, currentLiabilitiesMinor: currentLiabilities };
@@ -794,7 +916,8 @@ export async function getMonthlyPnl(
       netProfitMinor: 0n,
     };
     const net = toBig(r.net);
-    if (r.type === "income") m.revenueMinor += -net; // income is credit-normal
+    if (r.type === "income")
+      m.revenueMinor += -net; // income is credit-normal
     else if (r.subtype === "cost_of_goods_sold") m.cogsMinor += net;
     else m.expensesMinor += net;
     byMonth.set(r.month, m);
@@ -849,7 +972,14 @@ export async function getBudgetVsActual(
     join accounts a on a.id = b.account_id
     where b.org_id = ${orgId} and b.fiscal_year = ${fiscalYear}
     order by a.code
-  `)) as unknown as Array<{ account_id: string; code: string; name: string; type: string; budget: string; actual_signed: string }>;
+  `)) as unknown as Array<{
+    account_id: string;
+    code: string;
+    name: string;
+    type: string;
+    budget: string;
+    actual_signed: string;
+  }>;
 
   return rows.map((r) => {
     // Expenses are debit-positive already; income is credit-negative, so flip it
@@ -909,9 +1039,16 @@ export async function getCostCenterPnl(
   const byCc = new Map<string, CostCenterPnlRow>();
   for (const r of rows) {
     const key = r.cc_id ?? "__unassigned__";
-    const row = byCc.get(key) ?? { costCenterId: r.cc_id, name: r.name, revenueMinor: 0n, expenseMinor: 0n, netMinor: 0n };
+    const row = byCc.get(key) ?? {
+      costCenterId: r.cc_id,
+      name: r.name,
+      revenueMinor: 0n,
+      expenseMinor: 0n,
+      netMinor: 0n,
+    };
     const net = toBig(r.net);
-    if (r.type === "income") row.revenueMinor += -net; // credit-normal
+    if (r.type === "income")
+      row.revenueMinor += -net; // credit-normal
     else row.expenseMinor += net;
     byCc.set(key, row);
   }

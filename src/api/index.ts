@@ -36,6 +36,7 @@ import {
 } from "@/db/schema";
 import {
   getBalanceSheet,
+  getGstSummary,
   getCashFlow,
   getDashboardSummary,
   getDayBook,
@@ -232,6 +233,34 @@ export const fetchBalanceSheet = createServerFn({ method: "GET" })
         totalLiabilities: bs.totalLiabilitiesMinor.toString(),
         totalEquity: bs.totalEquityMinor.toString(),
         retainedEarnings: bs.retainedEarningsMinor.toString(),
+      };
+    });
+  });
+
+export const fetchGstSummary = createServerFn({ method: "GET" })
+  .validator(periodSchema)
+  .handler(async ({ data }) => {
+    const orgId = await currentOrgId();
+    const period = defaultPeriod();
+
+    return withOrg(orgId, async (tx) => {
+      const g = await getGstSummary(tx, orgId, data?.from ?? period.from, data?.to ?? period.to);
+      // Intra-state presentational split (place of supply isn't modelled): halve
+      // the total into CGST/SGST, giving the odd paisa to CGST so the two sum
+      // back exactly. IGST (inter-state) can't be derived, so it stays zero.
+      const half = (v: bigint) => {
+        const cgst = (v + 1n) / 2n;
+        return { cgst: cgst.toString(), sgst: (v - cgst).toString() };
+      };
+      return {
+        from: g.from,
+        to: g.to,
+        taxableSales: g.taxableSalesMinor.toString(),
+        outputTax: g.outputTaxMinor.toString(),
+        inputTax: g.inputTaxMinor.toString(),
+        netPayable: g.netPayableMinor.toString(),
+        output: half(g.outputTaxMinor),
+        input: half(g.inputTaxMinor),
       };
     });
   });

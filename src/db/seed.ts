@@ -319,6 +319,19 @@ const CHART: AccountSeed[] = [
     subtype: "depreciation_expense",
     parent: "5000",
   },
+  {
+    // The system fallback for any expense line that isn't tied to an inventory
+    // item or an explicitly chosen account — e.g. a bill for "office supplies".
+    // resolveControlAccount(…, "operating_expense") needs exactly one isSystem
+    // account of this subtype; without it, posting an expense bill throws
+    // CONTROL_ACCOUNT_MISSING. Every other control subtype already has one.
+    code: "5900",
+    name: "General & Administrative",
+    type: "expense",
+    subtype: "operating_expense",
+    isSystem: true,
+    parent: "5000",
+  },
 ];
 
 /* ────────────────────────────────────────────────────────────────────────────

@@ -549,6 +549,12 @@ export async function registerOwner(args: {
       .values({ name: args.orgName })
       .returning({ id: organizations.id });
 
+    // audit_log is RLS-scoped (WITH CHECK org_id = app.org_id), so the audit
+    // write below is rejected unless this transaction declares its tenant. The
+    // org row itself is exempt (identity table), which is the only reason it
+    // could be inserted a line above without this being set first.
+    await tx.execute(dsql`select set_config('app.org_id', ${org.id}, true)`);
+
     const [user] = await tx
       .insert(users)
       .values({ email, name: args.name, passwordHash })
@@ -591,6 +597,9 @@ export async function addMember(args: {
   const email = normalizeEmail(args.email);
 
   return db.transaction(async (tx) => {
+    // Declare the tenant so the RLS-scoped audit_log write at the end passes.
+    await tx.execute(dsql`select set_config('app.org_id', ${args.orgId}, true)`);
+
     let [user] = await tx
       .select({ id: users.id })
       .from(users)
@@ -659,6 +668,9 @@ export async function changeMemberRole(args: {
   actorUserId: string;
 }): Promise<void> {
   await db.transaction(async (tx) => {
+    // Declare the tenant so the RLS-scoped audit_log write at the end passes.
+    await tx.execute(dsql`select set_config('app.org_id', ${args.orgId}, true)`);
+
     const [current] = await tx
       .select({ role: memberships.role })
       .from(memberships)

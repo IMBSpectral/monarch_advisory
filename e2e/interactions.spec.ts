@@ -38,6 +38,19 @@ function dialog(page: Page): Locator {
   return page.getByRole("dialog");
 }
 
+/**
+ * Click a trigger and wait for its dialog. Retries the click because a button on
+ * a just-loaded (server-rendered, not-yet-hydrated) page can swallow the first
+ * click — relevant right after the signup redirect, before the client bundle
+ * has wired up handlers.
+ */
+async function openDialog(page: Page, buttonName: string) {
+  await expect(async () => {
+    await page.getByRole("button", { name: buttonName }).click();
+    await expect(dialog(page)).toBeVisible({ timeout: 2_000 });
+  }).toPass({ timeout: 15_000 });
+}
+
 /** Fail a test if any uncaught page error fires during it. */
 function trackErrors(page: Page): string[] {
   const errors: string[] = [];
@@ -329,6 +342,44 @@ test.describe("settings — team management", () => {
     await d.getByRole("button", { name: "Send invite" }).click();
     await waitToast(page, /Member added/);
     await expect(page.getByText(email)).toBeVisible();
+  });
+});
+
+test.describe("signup — a brand-new org gets working books", () => {
+  // Sign up runs unauthenticated, so drop the shared owner session for this block.
+  test.use({ storageState: { cookies: [], origins: [] } });
+
+  test("register an org, then create & issue an invoice in it", async ({ page }) => {
+    const errors = trackErrors(page);
+    const stamp = `${Date.now()}`.slice(-9);
+    await page.goto("/signup");
+    await page.getByLabel("Organization name").fill(`E2E Org ${stamp} Ltd`);
+    await page.getByLabel("Your name").fill("E2E Founder");
+    await page.getByLabel("Email").fill(`e2e-signup-${stamp}@example.test`);
+    await page.getByLabel("Password").fill(`signup-secret-${stamp}`);
+    await page.getByRole("button", { name: "Create organization" }).click();
+    await page.waitForURL("http://localhost:8082/");
+
+    // The org is provisioned with a chart of accounts + document sequences, so
+    // a customer + issued invoice must post cleanly (control accounts resolve,
+    // INV sequence starts at 1) — this is what was impossible before signup
+    // provisioning existed.
+    await page.goto("/sales/customers");
+    await openDialog(page, "New Customer");
+    await dialog(page).getByLabel("Name").fill("First Client Co");
+    await dialog(page).getByRole("button", { name: "Create customer" }).click();
+    await waitToast(page, /Customer created/);
+
+    await page.goto("/sales/invoices");
+    await openDialog(page, "New Invoice");
+    const d = dialog(page);
+    await pick(page, d.getByRole("combobox").first(), "First Client Co");
+    await d.getByPlaceholder("Description").fill("First engagement");
+    await d.getByPlaceholder("Unit ₹").fill("25000");
+    await d.getByRole("checkbox", { name: /Issue immediately/ }).check();
+    await d.getByRole("button", { name: "Create & issue" }).click();
+    await waitToast(page, /Invoice INV-0001 created and issued/);
+    expect(errors).toEqual([]);
   });
 });
 

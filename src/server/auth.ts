@@ -27,6 +27,7 @@ import type { DbOrTx } from "@/db/client";
 import { db } from "@/db/client";
 import { memberships, organizations, sessions, users } from "@/db/schema";
 import { writeAudit } from "./ledger";
+import { provisionOrgDefaults } from "./provisioning";
 
 /* ────────────────────────────────────────────────────────────────────────────
  * Errors
@@ -549,11 +550,17 @@ export async function registerOwner(args: {
       .values({ name: args.orgName })
       .returning({ id: organizations.id });
 
-    // audit_log is RLS-scoped (WITH CHECK org_id = app.org_id), so the audit
-    // write below is rejected unless this transaction declares its tenant. The
-    // org row itself is exempt (identity table), which is the only reason it
-    // could be inserted a line above without this being set first.
+    // audit_log, accounts and document_sequences are all RLS-scoped
+    // (WITH CHECK org_id = app.org_id), so the writes below are rejected unless
+    // this transaction declares its tenant. The org row itself is exempt
+    // (identity table), which is the only reason it could be inserted a line
+    // above without this being set first.
     await tx.execute(dsql`select set_config('app.org_id', ${org.id}, true)`);
+
+    // A new org has no books yet — provision a default chart of accounts and
+    // document sequences so invoicing, billing, and every posting flow work
+    // from the very first sign-in.
+    await provisionOrgDefaults(tx, org.id);
 
     const [user] = await tx
       .insert(users)

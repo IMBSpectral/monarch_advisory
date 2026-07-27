@@ -1,12 +1,27 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { PageHeader } from "@/components/AppShell";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { Download, Printer } from "lucide-react";
 import { fetchProfitAndLoss } from "@/api";
 import { formatMinor } from "@/lib/money";
+import { downloadCsv } from "@/lib/export";
+import { ReportPeriodPicker } from "@/components/ReportPeriodPicker";
+import { DEFAULT_PRESET, type PresetKey } from "@/lib/report-periods";
+
+type PnlSearch = { preset?: PresetKey; from?: string; to?: string };
 
 export const Route = createFileRoute("/accounting/pnl")({
-  loader: async () => fetchProfitAndLoss({ data: {} }),
+  // The reporting window lives in the URL, so a period is shareable, survives a
+  // refresh, and the back button steps through periods.
+  validateSearch: (search: Record<string, unknown>): PnlSearch => ({
+    preset: typeof search.preset === "string" ? (search.preset as PresetKey) : undefined,
+    from: typeof search.from === "string" ? search.from : undefined,
+    to: typeof search.to === "string" ? search.to : undefined,
+  }),
+  loaderDeps: ({ search }) => ({ from: search.from, to: search.to }),
+  loader: async ({ deps }) => fetchProfitAndLoss({ data: { from: deps.from, to: deps.to } }),
   component: PnL,
 });
 
@@ -53,10 +68,60 @@ function Section({ title, lines, total }: { title: string; lines: Line[]; total:
 
 function PnL() {
   const pnl = Route.useLoaderData();
+  const search = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
+  const preset = search.preset ?? DEFAULT_PRESET;
+
+  function exportCsv() {
+    const rows: string[][] = [];
+    const section = (title: string, lines: Line[]) => {
+      for (const l of lines) rows.push([title, l.name, formatMinor(l.amountMinor)]);
+    };
+    section("Revenue", pnl.revenue);
+    rows.push(["", "Total Revenue", formatMinor(pnl.totalRevenue)]);
+    section("Cost of Goods Sold", pnl.costOfGoodsSold);
+    rows.push(["", "Total Cost of Goods Sold", formatMinor(pnl.totalCogs)]);
+    rows.push(["", "Gross Profit", formatMinor(pnl.grossProfit)]);
+    section("Operating Expenses", pnl.operatingExpenses);
+    rows.push(["", "Total Operating Expenses", formatMinor(pnl.totalOperatingExpense)]);
+    rows.push(["", "Operating Profit", formatMinor(pnl.operatingProfit)]);
+    section("Other Income", pnl.otherIncome);
+    section("Other Expenses", pnl.otherExpenses);
+    rows.push(["", "Net Profit", formatMinor(pnl.netProfit)]);
+    downloadCsv(
+      `profit-and-loss_${pnl.from}_to_${pnl.to}.csv`,
+      ["Section", "Account", "Amount"],
+      rows,
+    );
+  }
+
+  const actions = (
+    <div className="flex items-center gap-2 print:hidden">
+      <ReportPeriodPicker
+        mode="range"
+        preset={preset}
+        from={pnl.from}
+        to={pnl.to}
+        onApply={({ preset, from, to }) => navigate({ search: { preset, from, to } })}
+      />
+      <Button variant="outline" size="sm" onClick={exportCsv}>
+        <Download className="mr-1.5 h-4 w-4" />
+        CSV
+      </Button>
+      <Button variant="outline" size="sm" onClick={() => window.print()}>
+        <Printer className="mr-1.5 h-4 w-4" />
+        Print / PDF
+      </Button>
+    </div>
+  );
 
   return (
     <>
-      <PageHeader title="Profit & Loss Statement" subtitle={`${pnl.from} – ${pnl.to}`} />
+      <PageHeader
+        title="Profit & Loss Statement"
+        subtitle={`${pnl.from} – ${pnl.to}`}
+        actions={actions}
+      />
       <div className="p-6">
         <Card className="p-8 max-w-4xl mx-auto shadow-elegant">
           <div className="text-center mb-6">

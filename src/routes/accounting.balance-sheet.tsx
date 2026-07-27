@@ -1,13 +1,29 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { PageHeader } from "@/components/AppShell";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
+import { Download, Printer } from "lucide-react";
 import { fetchBalanceSheet } from "@/api";
 import { formatMinor } from "@/lib/money";
+import { downloadCsv } from "@/lib/export";
+import { ReportPeriodPicker } from "@/components/ReportPeriodPicker";
+import { DEFAULT_PRESET, type PresetKey } from "@/lib/report-periods";
+
+type BsSearch = { preset?: PresetKey; asOf?: string };
 
 export const Route = createFileRoute("/accounting/balance-sheet")({
-  loader: async () => fetchBalanceSheet({ data: undefined }),
+  // The "as of" date lives in the URL — shareable, refresh-safe, and steppable
+  // with the back button. The balance sheet is a point-in-time snapshot, so only
+  // the end date matters; each range preset maps to its end date.
+  validateSearch: (search: Record<string, unknown>): BsSearch => ({
+    preset: typeof search.preset === "string" ? (search.preset as PresetKey) : undefined,
+    asOf: typeof search.asOf === "string" ? search.asOf : undefined,
+  }),
+  loaderDeps: ({ search }) => ({ asOf: search.asOf }),
+  loader: async ({ deps }) =>
+    fetchBalanceSheet({ data: deps.asOf ? { asOf: deps.asOf } : undefined }),
   component: BS,
 });
 
@@ -24,10 +40,44 @@ function LineRow({ l }: { l: Line }) {
 
 function BS() {
   const bs = Route.useLoaderData();
+  const search = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
+  const preset = search.preset ?? DEFAULT_PRESET;
+
+  function exportCsv() {
+    const rows: string[][] = [];
+    for (const l of bs.assets) rows.push(["Assets", l.name, formatMinor(l.amountMinor)]);
+    rows.push(["", "Total Assets", formatMinor(bs.totalAssets)]);
+    for (const l of bs.liabilities) rows.push(["Liabilities", l.name, formatMinor(l.amountMinor)]);
+    rows.push(["", "Total Liabilities", formatMinor(bs.totalLiabilities)]);
+    for (const l of bs.equity) rows.push(["Equity", l.name, formatMinor(l.amountMinor)]);
+    rows.push(["Equity", "Retained Earnings", formatMinor(bs.retainedEarnings)]);
+    rows.push(["", "Total Equity", formatMinor(bs.totalEquity)]);
+    downloadCsv(`balance-sheet_as-of_${bs.asOf}.csv`, ["Section", "Account", "Amount"], rows);
+  }
+
+  const actions = (
+    <div className="flex items-center gap-2 print:hidden">
+      <ReportPeriodPicker
+        mode="asOf"
+        preset={preset}
+        asOf={bs.asOf}
+        onApply={({ preset, asOf }) => navigate({ search: { preset, asOf } })}
+      />
+      <Button variant="outline" size="sm" onClick={exportCsv}>
+        <Download className="mr-1.5 h-4 w-4" />
+        CSV
+      </Button>
+      <Button variant="outline" size="sm" onClick={() => window.print()}>
+        <Printer className="mr-1.5 h-4 w-4" />
+        Print / PDF
+      </Button>
+    </div>
+  );
 
   return (
     <>
-      <PageHeader title="Balance Sheet" subtitle={`As of ${bs.asOf}`} />
+      <PageHeader title="Balance Sheet" subtitle={`As of ${bs.asOf}`} actions={actions} />
       <div className="p-6">
         <Card className="p-8 max-w-5xl mx-auto shadow-elegant">
           <div className="text-center mb-6">

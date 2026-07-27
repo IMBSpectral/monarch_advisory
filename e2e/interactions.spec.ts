@@ -102,7 +102,9 @@ test.describe("sales — contacts & documents", () => {
   test("create a customer", async ({ page }) => {
     await page.goto("/sales/customers");
     await page.getByRole("button", { name: "New Customer" }).click();
-    await dialog(page).getByLabel("Name").fill(`QA Customer ${Date.now() % 100000}`);
+    await dialog(page)
+      .getByLabel("Name")
+      .fill(`QA Customer ${Date.now() % 100000}`);
     await dialog(page).getByRole("button", { name: "Create customer" }).click();
     await waitToast(page, /Customer created/);
   });
@@ -161,7 +163,9 @@ test.describe("purchases", () => {
   test("create a vendor", async ({ page }) => {
     await page.goto("/purchases/vendors");
     await page.getByRole("button", { name: "New Vendor" }).click();
-    await dialog(page).getByLabel("Vendor name").fill(`QA Vendor ${Date.now() % 100000}`);
+    await dialog(page)
+      .getByLabel("Vendor name")
+      .fill(`QA Vendor ${Date.now() % 100000}`);
     await dialog(page).getByRole("button", { name: "Create vendor" }).click();
     await waitToast(page, /Vendor created/);
   });
@@ -324,7 +328,9 @@ test.describe("crm", () => {
   test("capture a lead (stored as a customer contact)", async ({ page }) => {
     await page.goto("/crm");
     await page.getByRole("button", { name: "New Lead" }).click();
-    await dialog(page).getByLabel("Name").fill(`QA Lead ${Date.now() % 100000}`);
+    await dialog(page)
+      .getByLabel("Name")
+      .fill(`QA Lead ${Date.now() % 100000}`);
     await dialog(page).getByRole("button", { name: "Create lead" }).click();
     await waitToast(page, /Lead saved as customer contact/);
   });
@@ -380,6 +386,43 @@ test.describe("signup — a brand-new org gets working books", () => {
     await d.getByRole("button", { name: "Create & issue" }).click();
     await waitToast(page, /Invoice INV-0001 created and issued/);
     expect(errors).toEqual([]);
+  });
+});
+
+test.describe("reports — custom date range", () => {
+  test("P&L: a preset scopes the period and updates the URL + header", async ({ page }) => {
+    await page.goto("/accounting/pnl");
+    await page.getByRole("button", { name: /This Financial Year:/ }).click();
+    await page.getByRole("button", { name: "Last Month", exact: true }).click();
+    await expect(page).toHaveURL(/preset=last_month&from=\d{4}-\d{2}-01&to=\d{4}-\d{2}-\d{2}/);
+    // Header echoes the same window the report was computed for.
+    const to = new URL(page.url()).searchParams.get("to")!;
+    await expect(page.getByText(`For period ${to.slice(0, 7)}`, { exact: false })).toBeVisible();
+  });
+
+  test("P&L: a custom range validates Start ≤ End then applies", async ({ page }) => {
+    await page.goto("/accounting/pnl");
+    await page.getByRole("button", { name: /This Financial Year:/ }).click();
+    // Inverted range: error shows and Apply is disabled.
+    await page.locator("#rp-start").fill("2026-07-25");
+    await page.locator("#rp-end").fill("2026-07-20");
+    await expect(page.getByText("Start date must be on or before the end date.")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Apply" })).toBeDisabled();
+    // Fix it and apply.
+    await page.locator("#rp-start").fill("2026-07-10");
+    await page.getByRole("button", { name: "Apply" }).click();
+    await expect(page).toHaveURL(/preset=custom&from=2026-07-10&to=2026-07-20/);
+  });
+
+  test("Balance Sheet: a preset sets the as-of end date only", async ({ page }) => {
+    await page.goto("/accounting/balance-sheet");
+    await page.getByRole("button", { name: /This Financial Year:/ }).click();
+    await page.getByRole("button", { name: "Last Month", exact: true }).click();
+    // Point-in-time: asOf is last month's END, and there is no from/to.
+    await expect(page).toHaveURL(/preset=last_month&asOf=\d{4}-\d{2}-\d{2}/);
+    await expect(page).not.toHaveURL(/from=/);
+    const asOf = new URL(page.url()).searchParams.get("asOf")!;
+    await expect(page.getByText(`As of ${asOf}`).first()).toBeVisible();
   });
 });
 

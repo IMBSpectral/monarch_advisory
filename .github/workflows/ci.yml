@@ -98,20 +98,22 @@ jobs:
       - run: bun run db:migrate
       - run: psql "$DATABASE_ADMIN_URL" -c "ALTER ROLE monarch_app WITH LOGIN PASSWORD 'monarch_app';"
       - run: bun run db:seed
+      - name: Build the production server
+        run: bun run build
       - name: Install Playwright browser
         run: bunx playwright install --with-deps chromium
-      - name: Warm the dev server, then run e2e
-        # Start the dev server and compile the main routes up front, so the very
-        # first login inside Playwright doesn't pay the cold Vite/server-fn
-        # compile cost (which flakes auth.setup on a cold CI runner). Playwright's
-        # webServer has reuseExistingServer, so it picks up this warm instance.
+      - name: Run e2e against the production build
+        # Run against the PRECOMPILED Nitro server, not `vite dev`. The dev
+        # server compiles routes/server-fns on first hit, which flakes auth.setup
+        # on a cold CI runner; the built server has none of that. Playwright's
+        # webServer has reuseExistingServer, so it reuses this instance on :8082.
         run: |
-          bun run dev -- --port 8082 --strictPort > /tmp/dev.log 2>&1 &
-          for i in $(seq 1 90); do curl -sf http://localhost:8082/login -o /dev/null && break; sleep 2; done
-          curl -s http://localhost:8082/login -o /dev/null || true
-          curl -s http://localhost:8082/ -o /dev/null || true
-          sleep 10
+          PORT=8082 node .output/server/index.mjs > /tmp/srv.log 2>&1 &
+          for i in $(seq 1 60); do curl -sf http://localhost:8082/login -o /dev/null && break; sleep 2; done
           bunx playwright test
+      - name: Server log on failure
+        if: failure()
+        run: tail -100 /tmp/srv.log || true
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

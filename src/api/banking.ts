@@ -10,6 +10,14 @@ import { z } from "zod";
 import { withOrg } from "@/db/client";
 import { bankAccounts, bankTransactions } from "@/db/schema";
 import { requireAuth, requirePermission } from "@/server/session";
+import { withIdempotency } from "@/server/idempotency";
+import {
+  categorizeTransaction,
+  excludeTransaction,
+  getReconciliationData,
+  matchTransactionToPayment,
+  unreconcileTransaction,
+} from "@/server/reconciliation";
 
 export const fetchImportableBankAccounts = createServerFn({ method: "GET" }).handler(async () => {
   const { orgId } = await requireAuth();
@@ -112,5 +120,86 @@ export const fetchBankTransactionsFor = createServerFn({ method: "GET" })
         .orderBy(desc(bankTransactions.transactionDate))
         .limit(100);
       return rows.map((r) => ({ ...r, amount: r.amountMinor.toString(), amountMinor: undefined }));
+    });
+  });
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * Reconciliation — persisting a bank-feed line as a settled fact.
+ * ──────────────────────────────────────────────────────────────────────────*/
+
+/** Everything the reconciliation workspace needs for one bank account. */
+export const fetchReconciliation = createServerFn({ method: "GET" })
+  .validator(z.object({ bankAccountId: z.string().uuid() }))
+  .handler(async ({ data }) => {
+    const { orgId } = await requireAuth();
+    return getReconciliationData(orgId, data.bankAccountId);
+  });
+
+/** Match a feed line to a payment already recorded (links, posts nothing new). */
+export const reconcileMatchFn = createServerFn({ method: "POST" })
+  .validator(
+    z.object({
+      bankTransactionId: z.string().uuid(),
+      paymentId: z.string().uuid(),
+      idempotencyKey: z.string().uuid().optional(),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const p = await requirePermission("bank:reconcile");
+    return withIdempotency(p.orgId, data.idempotencyKey, "bank.match", () =>
+      matchTransactionToPayment({
+        orgId: p.orgId,
+        bankTransactionId: data.bankTransactionId,
+        paymentId: data.paymentId,
+        userId: p.userId,
+      }),
+    );
+  });
+
+/** Categorize a bank-only feed line (interest, charges) — posts a journal entry. */
+export const reconcileCategorizeFn = createServerFn({ method: "POST" })
+  .validator(
+    z.object({
+      bankTransactionId: z.string().uuid(),
+      categoryAccountId: z.string().uuid(),
+      memo: z.string().max(500).optional(),
+      idempotencyKey: z.string().uuid().optional(),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const p = await requirePermission("bank:reconcile");
+    return withIdempotency(p.orgId, data.idempotencyKey, "bank.categorize", () =>
+      categorizeTransaction({
+        orgId: p.orgId,
+        bankTransactionId: data.bankTransactionId,
+        categoryAccountId: data.categoryAccountId,
+        memo: data.memo ?? null,
+        userId: p.userId,
+      }),
+    );
+  });
+
+/** Exclude a feed line from reconciliation (e.g. a duplicate internal transfer). */
+export const reconcileExcludeFn = createServerFn({ method: "POST" })
+  .validator(z.object({ bankTransactionId: z.string().uuid() }))
+  .handler(async ({ data }) => {
+    const p = await requirePermission("bank:reconcile");
+    return excludeTransaction({
+      orgId: p.orgId,
+      bankTransactionId: data.bankTransactionId,
+      userId: p.userId,
+    });
+  });
+
+/** Undo a reconciliation — reverses a categorization's entry or unlinks a match. */
+export const unreconcileFn = createServerFn({ method: "POST" })
+  .validator(z.object({ bankTransactionId: z.string().uuid(), reason: z.string().min(1).max(500) }))
+  .handler(async ({ data }) => {
+    const p = await requirePermission("bank:reconcile");
+    return unreconcileTransaction({
+      orgId: p.orgId,
+      bankTransactionId: data.bankTransactionId,
+      reason: data.reason,
+      userId: p.userId,
     });
   });

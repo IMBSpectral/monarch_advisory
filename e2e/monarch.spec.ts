@@ -73,6 +73,14 @@ test.describe("key figures are present and non-empty", () => {
     await expect(page.getByText("Reconciled").first()).toBeVisible();
   });
 
+  test("bank reconciliation screen renders the feed-vs-book summary", async ({ page }) => {
+    await page.goto("/banking/reconcile");
+    await expect(page.getByRole("heading", { name: "Reconcile", exact: true })).toBeVisible();
+    // A seeded org has bank accounts, so the reconciliation summary appears.
+    await expect(page.getByText("Bank feed balance").first()).toBeVisible();
+    await expect(page.getByText("Book (GL) balance").first()).toBeVisible();
+  });
+
   test("forex exposure shows the USD account", async ({ page }) => {
     await page.goto("/reports/forex");
     await expect(page.getByText("SVB USD Account").first()).toBeVisible();

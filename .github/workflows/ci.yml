@@ -69,6 +69,8 @@ jobs:
         run: bun run db:test
       - name: Idempotency integration test
         run: bun run db:test:idempotency
+      - name: Bank reconciliation integration test
+        run: bun run db:test:reconciliation
 
   # ── End-to-end: every module renders + the marquee flows post ──────────────
   e2e:

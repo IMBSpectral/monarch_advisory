@@ -43,6 +43,7 @@ import {
   writeAudit,
   type PostingLine,
 } from "./ledger";
+import { assertApprovalSeparation } from "./approvals";
 import {
   getDefaultWarehouseId,
   getTrackedItem,
@@ -290,22 +291,16 @@ export async function postBill(args: {
       );
     }
 
-    // Maker-checker. When the org sets an approval threshold, a bill at or above
-    // it may not be posted by the person who created it — a different user must
-    // post it, which is the approval. This is separation of duties: the check
-    // that stops one person from both raising and clearing a large liability.
-    const [org] = await tx
-      .select({ threshold: organizations.approvalThresholdMinor })
-      .from(organizations)
-      .where(eq(organizations.id, args.orgId));
-    const threshold = org?.threshold ?? null;
-    const needsApproval = threshold !== null && bill.totalMinor >= threshold;
-    if (needsApproval && (!args.userId || args.userId === bill.createdByUserId)) {
-      throw new LedgerError(
-        `Bill ${bill.billNumber} needs approval: a bill at or above the org's approval threshold must be posted by someone other than the person who created it.`,
-        "APPROVAL_SEPARATION_REQUIRED",
-      );
-    }
+    // Maker-checker: a bill at or above the org threshold must be posted by
+    // someone other than the person who created it (separation of duties).
+    await assertApprovalSeparation({
+      tx,
+      orgId: args.orgId,
+      totalMinor: bill.totalMinor,
+      creatorId: bill.createdByUserId,
+      posterId: args.userId,
+      docLabel: `Bill ${bill.billNumber}`,
+    });
 
     const lines = await tx.select().from(billLines).where(eq(billLines.billId, bill.id));
 

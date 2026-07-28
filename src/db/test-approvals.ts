@@ -14,12 +14,15 @@ import {
   billLines,
   bills,
   contacts,
+  invoiceLines,
+  invoices,
   journalEntries,
   journalLines,
   memberships,
   organizations,
 } from "./schema";
 import { createBill, postBill } from "@/server/bills";
+import { createInvoice, postInvoice } from "@/server/invoicing";
 import { LedgerError } from "@/server/ledger";
 
 let failures = 0;
@@ -55,6 +58,15 @@ async function main() {
       .limit(1),
   );
   if (!vendor) throw new Error("No vendor contact in this org.");
+
+  const [customer] = await withOrg(orgId, (tx) =>
+    tx
+      .select({ id: contacts.id })
+      .from(contacts)
+      .where(and(eq(contacts.orgId, orgId), inArray(contacts.type, ["customer", "both"])))
+      .limit(1),
+  );
+  if (!customer) throw new Error("No customer contact in this org.");
 
   const [expense] = await withOrg(orgId, (tx) =>
     tx
@@ -112,6 +124,24 @@ async function main() {
     return b;
   };
 
+  const makeInvoice = (unitMinor: bigint, userId: string) =>
+    createInvoice({
+      orgId,
+      contactId: customer.id,
+      invoiceDate: "2026-03-20",
+      dueDate: "2026-04-20",
+      notes: `${MARK}-${Math.random().toString(36).slice(2, 8)}`,
+      userId,
+      lines: [{ description: "TEST approval line", quantity: "1", unitPriceMinor: unitMinor }],
+    });
+
+  const invoiceStatus = async (invoiceId: string) => {
+    const [inv] = await withOrg(orgId, (tx) =>
+      tx.select().from(invoices).where(eq(invoices.id, invoiceId)),
+    );
+    return inv;
+  };
+
   try {
     // Threshold = ₹1,000 (100000 paise).
     await setThreshold(100_000n);
@@ -148,6 +178,28 @@ async function main() {
     await postBill({ orgId, billId: off.billId, userId: userA });
     const afterOff = await billStatus(off.billId);
     check("approvals off → creator can self-post any amount", afterOff.status === "open");
+
+    // ── Test 5: invoices enforce the same maker-checker gate ──────────────────
+    await setThreshold(100_000n);
+    const bigInv = await makeInvoice(500_000n, userA); // ₹5,000 ≥ ₹1,000
+    let invBlocked = false;
+    try {
+      await postInvoice({ orgId, invoiceId: bigInv.invoiceId, userId: userA });
+    } catch (e) {
+      invBlocked = e instanceof LedgerError && e.code === "APPROVAL_SEPARATION_REQUIRED";
+    }
+    const invAfterBlock = await invoiceStatus(bigInv.invoiceId);
+    check("creator can't post their own ≥threshold invoice", invBlocked);
+    check("blocked invoice stays a draft", invAfterBlock.status === "draft");
+
+    await postInvoice({ orgId, invoiceId: bigInv.invoiceId, userId: userB });
+    const invAfterApprove = await invoiceStatus(bigInv.invoiceId);
+    check("a different user can post (approve) the invoice", invAfterApprove.status === "sent");
+
+    const smallInv = await makeInvoice(50_000n, userA); // ₹500 < ₹1,000
+    await postInvoice({ orgId, invoiceId: smallInv.invoiceId, userId: userA });
+    const invAfterSmall = await invoiceStatus(smallInv.invoiceId);
+    check("creator can self-post a below-threshold invoice", invAfterSmall.status === "sent");
   } finally {
     // Restore the threshold and remove every bill (and its ledger entry) this test made.
     await setThreshold(originalThreshold);
@@ -161,19 +213,32 @@ async function main() {
   process.exit(failures === 0 ? 0 : 1);
 }
 
-/** Delete the test bills and any journal entries they posted (admin, seed-safe). */
+/** Delete the test bills/invoices and any journal entries they posted (admin, seed-safe). */
 async function cleanup(orgId: string) {
   await withOrg(orgId, async (tx) => {
     const testBills = await tx
       .select({ id: bills.id, entryId: bills.journalEntryId })
       .from(bills)
       .where(and(eq(bills.orgId, orgId), like(bills.vendorInvoiceNumber, `${MARK}-%`)));
-    if (testBills.length === 0) return;
-    const billIds = testBills.map((b) => b.id);
-    const entryIds = testBills.map((b) => b.entryId).filter((e): e is string => e !== null);
+    const testInvoices = await tx
+      .select({ id: invoices.id, entryId: invoices.journalEntryId })
+      .from(invoices)
+      .where(and(eq(invoices.orgId, orgId), like(invoices.notes, `${MARK}-%`)));
 
-    await tx.delete(billLines).where(inArray(billLines.billId, billIds));
-    await tx.delete(bills).where(inArray(bills.id, billIds));
+    const entryIds = [...testBills, ...testInvoices]
+      .map((r) => r.entryId)
+      .filter((e): e is string => e !== null);
+
+    if (testBills.length) {
+      const billIds = testBills.map((b) => b.id);
+      await tx.delete(billLines).where(inArray(billLines.billId, billIds));
+      await tx.delete(bills).where(inArray(bills.id, billIds));
+    }
+    if (testInvoices.length) {
+      const invoiceIds = testInvoices.map((i) => i.id);
+      await tx.delete(invoiceLines).where(inArray(invoiceLines.invoiceId, invoiceIds));
+      await tx.delete(invoices).where(inArray(invoices.id, invoiceIds));
+    }
     if (entryIds.length) {
       await tx.delete(journalLines).where(inArray(journalLines.entryId, entryIds));
       await tx.delete(journalEntries).where(inArray(journalEntries.id, entryIds));

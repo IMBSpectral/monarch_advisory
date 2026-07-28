@@ -147,9 +147,11 @@ export function NewInvoiceDialog({
       setOpen(false);
       reset();
       toast.success(
-        postNow
-          ? `Invoice ${result.invoiceNumber} created and issued`
-          : `Draft invoice ${result.invoiceNumber} created`,
+        result.awaitingApproval
+          ? `Invoice ${result.invoiceNumber} created — it needs approval from another user before it posts`
+          : postNow
+            ? `Invoice ${result.invoiceNumber} created and issued`
+            : `Draft invoice ${result.invoiceNumber} created`,
       );
       await router.invalidate();
     } catch (err) {

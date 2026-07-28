@@ -50,6 +50,7 @@ import {
 import { getStockSummary } from "@/server/inventory";
 import { createAccount, createBankAccount, listContacts, listItems } from "@/server/entities";
 import { createInvoice, postInvoice, recordCustomerPayment } from "@/server/invoicing";
+import { LedgerError } from "@/server/ledger";
 import { assertCan } from "@/server/auth";
 import { currentOrgId, requireAuth, requirePermission } from "@/server/session";
 import { fiscalYearToDateISO } from "@/lib/fiscal";
@@ -445,6 +446,7 @@ export const fetchInvoices = createServerFn({ method: "GET" })
           currency: invoices.currency,
           totalMinor: invoices.totalMinor,
           amountPaidMinor: invoices.amountPaidMinor,
+          createdByUserId: invoices.createdByUserId,
           customerName: contacts.displayName,
           contactId: contacts.id,
         })
@@ -816,20 +818,33 @@ export const createInvoiceFn = createServerFn({ method: "POST" })
         dueDate: data.dueDate,
         notes: data.notes,
         terms: data.terms,
+        userId: principal.userId,
         lines: data.lines.map((l) => ({
           ...l,
           unitPriceMinor: BigInt(l.unitPriceMinor),
         })),
       });
 
+      // Post-immediately is a maker convenience. If this invoice needs a separate
+      // approver (maker-checker), don't fail — leave it a draft for a checker.
+      let awaitingApproval = false;
       if (data.postImmediately) {
-        await postInvoice({ orgId, invoiceId: result.invoiceId, userId: principal.userId });
+        try {
+          await postInvoice({ orgId, invoiceId: result.invoiceId, userId: principal.userId });
+        } catch (err) {
+          if (err instanceof LedgerError && err.code === "APPROVAL_SEPARATION_REQUIRED") {
+            awaitingApproval = true;
+          } else {
+            throw err;
+          }
+        }
       }
 
       return {
         invoiceId: result.invoiceId,
         invoiceNumber: result.invoiceNumber,
         total: result.totalMinor.toString(),
+        awaitingApproval,
       };
     });
   });

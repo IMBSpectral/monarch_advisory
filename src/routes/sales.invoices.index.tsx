@@ -1,6 +1,7 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Download, Search } from "lucide-react";
+import { Download, Loader2, Search } from "lucide-react";
+import { toast } from "sonner";
 
 import { PageHeader } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
@@ -23,8 +24,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { NewInvoiceDialog } from "@/components/NewInvoiceDialog";
-import { useCan } from "@/components/SessionContext";
-import { fetchInvoices } from "@/api";
+import { useCan, useSession } from "@/components/SessionContext";
+import { fetchInvoices, postInvoiceFn } from "@/api";
+import { fetchApprovalSettings } from "@/api/settings";
 import { fetchContacts, fetchTaxRates } from "@/api/entities";
 import { formatMinor } from "@/lib/money";
 import { downloadCsv } from "@/lib/export";
@@ -32,12 +34,13 @@ import { downloadCsv } from "@/lib/export";
 export const Route = createFileRoute("/sales/invoices/")({
   loader: async () => {
     // The list plus what the "New Invoice" form needs, in parallel.
-    const [invoices, customers, taxRates] = await Promise.all([
+    const [invoices, customers, taxRates, approval] = await Promise.all([
       fetchInvoices({ data: {} }),
       fetchContacts({ data: { type: "customer" } }),
       fetchTaxRates(),
+      fetchApprovalSettings(),
     ]);
-    return { invoices, customers, taxRates };
+    return { invoices, customers, taxRates, approval };
   },
   component: Invoices,
 });
@@ -63,12 +66,34 @@ const statusLabel: Record<string, string> = {
 };
 
 function Invoices() {
-  const { invoices, customers, taxRates } = Route.useLoaderData();
+  const { invoices, customers, taxRates, approval } = Route.useLoaderData();
   const canCreate = useCan("document:create");
   const canPost = useCan("ledger:post");
+  const session = useSession();
+  const router = useRouter();
 
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
+  const [postingId, setPostingId] = useState<string | null>(null);
+
+  const threshold = approval.approvalThresholdMinor
+    ? BigInt(approval.approvalThresholdMinor)
+    : null;
+  const needsApproval = (i: (typeof invoices)[number]) =>
+    threshold !== null && BigInt(i.total) >= threshold;
+
+  async function post(i: (typeof invoices)[number]) {
+    setPostingId(i.id);
+    try {
+      await postInvoiceFn({ data: { invoiceId: i.id } });
+      toast.success(`${i.invoiceNumber} posted.`);
+      await router.invalidate();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not post the invoice.");
+    } finally {
+      setPostingId(null);
+    }
+  }
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -118,6 +143,13 @@ function Invoices() {
         }
       />
       <div className="space-y-4 p-6">
+        {threshold !== null ? (
+          <p className="text-sm text-muted-foreground">
+            Approvals on — an invoice at or above{" "}
+            <span className="font-medium">{formatMinor(threshold, { showPaise: false })}</span> must
+            be posted by someone other than the person who raised it.
+          </p>
+        ) : null}
         <Card>
           <div className="flex flex-wrap items-center gap-2 border-b p-3">
             <div className="relative max-w-xs flex-1">
@@ -154,12 +186,13 @@ function Invoices() {
                 <TableHead className="text-right">Amount</TableHead>
                 <TableHead className="text-right">Balance</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="py-10 text-center text-muted-foreground">
+                  <TableCell colSpan={8} className="py-10 text-center text-muted-foreground">
                     {invoices.length === 0
                       ? "No invoices yet. Create your first one."
                       : "No invoices match your filters."}
@@ -187,9 +220,40 @@ function Invoices() {
                       {formatMinor(i.balance)}
                     </TableCell>
                     <TableCell>
-                      <Badge variant="outline" className={statusStyle[i.status] ?? ""}>
-                        {statusLabel[i.status] ?? i.status}
-                      </Badge>
+                      <div className="flex items-center gap-1.5">
+                        <Badge variant="outline" className={statusStyle[i.status] ?? ""}>
+                          {statusLabel[i.status] ?? i.status}
+                        </Badge>
+                        {i.status === "draft" && needsApproval(i) ? (
+                          <Badge
+                            variant="outline"
+                            className="border-warning/30 bg-warning/10 text-warning-foreground"
+                          >
+                            Needs approval
+                          </Badge>
+                        ) : null}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {i.status === "draft" && canPost ? (
+                        needsApproval(i) && session?.userId === i.createdByUserId ? (
+                          <span className="text-xs text-muted-foreground">
+                            Another user must approve
+                          </span>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={postingId === i.id}
+                            onClick={() => post(i)}
+                          >
+                            {postingId === i.id ? (
+                              <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                            ) : null}
+                            {needsApproval(i) ? "Approve & post" : "Post"}
+                          </Button>
+                        )
+                      ) : null}
                     </TableCell>
                   </TableRow>
                 ))

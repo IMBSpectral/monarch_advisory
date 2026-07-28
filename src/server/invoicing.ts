@@ -41,6 +41,7 @@ import {
   writeAudit,
   type PostingLine,
 } from "./ledger";
+import { assertApprovalSeparation } from "./approvals";
 import {
   commitStockOut,
   getDefaultWarehouseId,
@@ -321,6 +322,17 @@ export async function postInvoice(args: {
         "INVOICE_NOT_DRAFT",
       );
     }
+
+    // Maker-checker: an invoice at or above the org threshold must be posted by
+    // someone other than the person who created it (separation of duties).
+    await assertApprovalSeparation({
+      tx,
+      orgId: args.orgId,
+      totalMinor: invoice.totalMinor,
+      creatorId: invoice.createdByUserId,
+      posterId: args.userId,
+      docLabel: `Invoice ${invoice.invoiceNumber}`,
+    });
 
     const lines = await tx
       .select()

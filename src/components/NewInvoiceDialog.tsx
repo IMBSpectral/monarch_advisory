@@ -24,6 +24,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createInvoiceFn } from "@/api";
 import { formatMinor } from "@/lib/money";
+import { useIdempotencyKey } from "@/lib/idempotency";
 
 /**
  * Create-invoice dialog.
@@ -83,6 +84,7 @@ export function NewInvoiceDialog({
   const [dueDate, setDueDate] = useState("");
   const [postNow, setPostNow] = useState(false);
   const [lines, setLines] = useState<LineDraft[]>([emptyLine()]);
+  const idem = useIdempotencyKey();
 
   const taxById = useMemo(() => new Map(taxRates.map((t) => [t.id, t])), [taxRates]);
 
@@ -132,6 +134,7 @@ export function NewInvoiceDialog({
           invoiceDate,
           dueDate: dueDate || undefined,
           postImmediately: postNow,
+          idempotencyKey: idem.key,
           lines: usable.map((l) => ({
             description: l.description.trim(),
             quantity: l.quantity || "1",
@@ -140,6 +143,7 @@ export function NewInvoiceDialog({
           })),
         },
       });
+      idem.renew(); // observed success → the next invoice is a new operation
       setOpen(false);
       reset();
       toast.success(

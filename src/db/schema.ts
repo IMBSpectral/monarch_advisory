@@ -1768,6 +1768,34 @@ export const documentSequences = pgTable(
   (t) => [uniqueIndex("seq_org_type_idx").on(t.orgId, t.documentType)],
 );
 
+/**
+ * Idempotency keys — a client-supplied key per mutating request. Replaying the
+ * same (org, key) returns the stored result instead of re-executing, so a
+ * double-submit or a network retry can't create a second invoice, payment,
+ * import or journal entry. The row is claimed `pending`, then updated to
+ * `completed` with the serialized result once the operation succeeds; a failed
+ * operation deletes its row so the key can be retried.
+ */
+export const idempotencyKeys = pgTable(
+  "idempotency_keys",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orgId: uuid("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    idempotencyKey: text("idempotency_key").notNull(),
+    /** The mutation this key guards, e.g. "invoice.create". */
+    operation: text("operation").notNull(),
+    /** pending | completed */
+    status: text("status").notNull().default("pending"),
+    /** The serialized return value, replayed verbatim on a repeat. */
+    resultJson: jsonb("result_json"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("idempotency_org_key_idx").on(t.orgId, t.idempotencyKey)],
+);
+
 /* ────────────────────────────────────────────────────────────────────────────
  * Relations
  * ──────────────────────────────────────────────────────────────────────────*/

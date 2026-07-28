@@ -52,6 +52,7 @@ import { createAccount, createBankAccount, listContacts, listItems } from "@/ser
 import { createInvoice, postInvoice, recordCustomerPayment } from "@/server/invoicing";
 import { assertCan } from "@/server/auth";
 import { currentOrgId, requireAuth, requirePermission } from "@/server/session";
+import { withIdempotency } from "@/server/idempotency";
 
 /* ────────────────────────────────────────────────────────────────────────────
  * Session
@@ -796,6 +797,8 @@ export const createInvoiceFn = createServerFn({ method: "POST" })
       lines: z.array(draftLineSchema).min(1),
       /** Post immediately rather than leaving it a draft. */
       postImmediately: z.boolean().optional(),
+      /** Dedup key — a replay returns the first result instead of a 2nd invoice. */
+      idempotencyKey: z.string().uuid().optional(),
     }),
   )
   .handler(async ({ data }) => {
@@ -805,28 +808,30 @@ export const createInvoiceFn = createServerFn({ method: "POST" })
     if (data.postImmediately) assertCan(principal, "ledger:post");
     const orgId = principal.orgId;
 
-    const result = await createInvoice({
-      orgId,
-      contactId: data.contactId,
-      invoiceDate: data.invoiceDate,
-      dueDate: data.dueDate,
-      notes: data.notes,
-      terms: data.terms,
-      lines: data.lines.map((l) => ({
-        ...l,
-        unitPriceMinor: BigInt(l.unitPriceMinor),
-      })),
+    return withIdempotency(orgId, data.idempotencyKey, "invoice.create", async () => {
+      const result = await createInvoice({
+        orgId,
+        contactId: data.contactId,
+        invoiceDate: data.invoiceDate,
+        dueDate: data.dueDate,
+        notes: data.notes,
+        terms: data.terms,
+        lines: data.lines.map((l) => ({
+          ...l,
+          unitPriceMinor: BigInt(l.unitPriceMinor),
+        })),
+      });
+
+      if (data.postImmediately) {
+        await postInvoice({ orgId, invoiceId: result.invoiceId, userId: principal.userId });
+      }
+
+      return {
+        invoiceId: result.invoiceId,
+        invoiceNumber: result.invoiceNumber,
+        total: result.totalMinor.toString(),
+      };
     });
-
-    if (data.postImmediately) {
-      await postInvoice({ orgId, invoiceId: result.invoiceId, userId: principal.userId });
-    }
-
-    return {
-      invoiceId: result.invoiceId,
-      invoiceNumber: result.invoiceNumber,
-      total: result.totalMinor.toString(),
-    };
   });
 
 export const postInvoiceFn = createServerFn({ method: "POST" })
@@ -858,27 +863,30 @@ export const recordPaymentFn = createServerFn({ method: "POST" })
           }),
         )
         .default([]),
+      idempotencyKey: z.string().uuid().optional(),
     }),
   )
   .handler(async ({ data }) => {
     const principal = await requirePermission("payment:record");
     const orgId = principal.orgId;
-    const result = await recordCustomerPayment({
-      orgId,
-      contactId: data.contactId,
-      paymentDate: data.paymentDate,
-      amountMinor: BigInt(data.amountMinor),
-      depositAccountId: data.depositAccountId,
-      method: data.method,
-      referenceNumber: data.referenceNumber,
-      allocations: data.allocations.map((a) => ({
-        invoiceId: a.invoiceId,
-        amountMinor: BigInt(a.amountMinor),
-      })),
+    return withIdempotency(orgId, data.idempotencyKey, "payment.record", async () => {
+      const result = await recordCustomerPayment({
+        orgId,
+        contactId: data.contactId,
+        paymentDate: data.paymentDate,
+        amountMinor: BigInt(data.amountMinor),
+        depositAccountId: data.depositAccountId,
+        method: data.method,
+        referenceNumber: data.referenceNumber,
+        allocations: data.allocations.map((a) => ({
+          invoiceId: a.invoiceId,
+          amountMinor: BigInt(a.amountMinor),
+        })),
+      });
+      return {
+        paymentId: result.paymentId,
+        paymentNumber: result.paymentNumber,
+        entryId: result.entryId,
+      };
     });
-    return {
-      paymentId: result.paymentId,
-      paymentNumber: result.paymentNumber,
-      entryId: result.entryId,
-    };
   });

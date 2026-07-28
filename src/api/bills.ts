@@ -14,6 +14,7 @@ import { bills, contacts } from "@/db/schema";
 import { createBill, postBill, recordVendorPayment, voidBill } from "@/server/bills";
 import { requireAuth, requirePermission } from "@/server/session";
 import { assertCan } from "@/server/auth";
+import { withIdempotency } from "@/server/idempotency";
 
 /* ────────────────────────────────────────────────────────────────────────────
  * List
@@ -85,36 +86,40 @@ export const createBillFn = createServerFn({ method: "POST" })
       notes: z.string().optional(),
       lines: z.array(billLineSchema).min(1),
       postImmediately: z.boolean().optional(),
+      idempotencyKey: z.string().uuid().optional(),
     }),
   )
   .handler(async ({ data }) => {
     // Raising a bill is staff-level; posting it needs the accountant capability.
     const principal = await requirePermission("document:create");
     if (data.postImmediately) assertCan(principal, "ledger:post");
+    const orgId = principal.orgId;
 
-    const result = await createBill({
-      orgId: principal.orgId,
-      contactId: data.contactId,
-      billDate: data.billDate,
-      dueDate: data.dueDate,
-      vendorInvoiceNumber: data.vendorInvoiceNumber,
-      notes: data.notes,
-      userId: principal.userId,
-      lines: data.lines.map((l) => ({
-        ...l,
-        unitPriceMinor: BigInt(l.unitPriceMinor),
-      })),
+    return withIdempotency(orgId, data.idempotencyKey, "bill.create", async () => {
+      const result = await createBill({
+        orgId,
+        contactId: data.contactId,
+        billDate: data.billDate,
+        dueDate: data.dueDate,
+        vendorInvoiceNumber: data.vendorInvoiceNumber,
+        notes: data.notes,
+        userId: principal.userId,
+        lines: data.lines.map((l) => ({
+          ...l,
+          unitPriceMinor: BigInt(l.unitPriceMinor),
+        })),
+      });
+
+      if (data.postImmediately) {
+        await postBill({ orgId, billId: result.billId, userId: principal.userId });
+      }
+
+      return {
+        billId: result.billId,
+        billNumber: result.billNumber,
+        total: result.totalMinor.toString(),
+      };
     });
-
-    if (data.postImmediately) {
-      await postBill({ orgId: principal.orgId, billId: result.billId, userId: principal.userId });
-    }
-
-    return {
-      billId: result.billId,
-      billNumber: result.billNumber,
-      total: result.totalMinor.toString(),
-    };
   });
 
 export const postBillFn = createServerFn({ method: "POST" })

@@ -9,6 +9,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { posCheckout } from "@/server/pos";
 import { requirePermission } from "@/server/session";
+import { withIdempotency } from "@/server/idempotency";
 
 export const posCheckoutFn = createServerFn({ method: "POST" })
   .validator(
@@ -25,21 +26,24 @@ export const posCheckoutFn = createServerFn({ method: "POST" })
           }),
         )
         .min(1),
+      idempotencyKey: z.string().uuid().optional(),
     }),
   )
   .handler(async ({ data }) => {
     const principal = await requirePermission("payment:record");
-    return posCheckout({
-      orgId: principal.orgId,
-      userId: principal.userId,
-      method: data.method,
-      saleDate: new Date().toISOString().slice(0, 10),
-      lines: data.lines.map((l) => ({
-        itemId: l.itemId ?? null,
-        description: l.description,
-        quantity: l.quantity,
-        unitPriceMinor: BigInt(l.unitPriceMinor),
-        taxRateId: l.taxRateId ?? null,
-      })),
-    });
+    return withIdempotency(principal.orgId, data.idempotencyKey, "pos.checkout", () =>
+      posCheckout({
+        orgId: principal.orgId,
+        userId: principal.userId,
+        method: data.method,
+        saleDate: new Date().toISOString().slice(0, 10),
+        lines: data.lines.map((l) => ({
+          itemId: l.itemId ?? null,
+          description: l.description,
+          quantity: l.quantity,
+          unitPriceMinor: BigInt(l.unitPriceMinor),
+          taxRateId: l.taxRateId ?? null,
+        })),
+      }),
+    );
   });

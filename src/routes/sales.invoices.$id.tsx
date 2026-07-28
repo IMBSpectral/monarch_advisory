@@ -29,6 +29,7 @@ import {
 import { useCan, useSession } from "@/components/SessionContext";
 import { fetchInvoiceDetail, fetchDepositAccounts, postInvoiceFn, recordPaymentFn } from "@/api";
 import { formatMinor } from "@/lib/money";
+import { useIdempotencyKey } from "@/lib/idempotency";
 
 export const Route = createFileRoute("/sales/invoices/$id")({
   loader: async ({ params }) => {
@@ -311,6 +312,7 @@ function RecordPaymentDialog({
   const [depositAccountId, setDepositAccountId] = useState(depositAccounts[0]?.id ?? "");
   const [method, setMethod] = useState("Bank transfer");
   const [paymentDate, setPaymentDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const idem = useIdempotencyKey();
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -339,9 +341,11 @@ function RecordPaymentDialog({
           amountMinor,
           depositAccountId,
           method,
+          idempotencyKey: idem.key,
           allocations: [{ invoiceId: invoice.id, amountMinor }],
         },
       });
+      idem.renew();
       setOpen(false);
       toast.success(`Payment recorded against ${invoice.invoiceNumber}`);
       await onDone();

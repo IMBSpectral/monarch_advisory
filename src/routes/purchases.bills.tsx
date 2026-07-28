@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/select";
 import { useCan } from "@/components/SessionContext";
 import { fetchBills, createBillFn } from "@/api/bills";
+import { useIdempotencyKey } from "@/lib/idempotency";
 import { fetchContacts, fetchTaxRates } from "@/api/entities";
 import { formatMinor } from "@/lib/money";
 
@@ -180,6 +181,7 @@ function NewBillDialog({
   const [dueDate, setDueDate] = useState("");
   const [postNow, setPostNow] = useState(false);
   const [lines, setLines] = useState<LineDraft[]>([emptyLine()]);
+  const idem = useIdempotencyKey();
 
   const taxById = useMemo(() => new Map(taxRates.map((t) => [t.id, t])), [taxRates]);
 
@@ -230,6 +232,7 @@ function NewBillDialog({
           dueDate: dueDate || undefined,
           vendorInvoiceNumber: vendorInvoiceNumber || undefined,
           postImmediately: postNow,
+          idempotencyKey: idem.key,
           lines: usable.map((l) => ({
             description: l.description.trim(),
             quantity: l.quantity || "1",
@@ -238,6 +241,7 @@ function NewBillDialog({
           })),
         },
       });
+      idem.renew();
       setOpen(false);
       reset();
       toast.success(

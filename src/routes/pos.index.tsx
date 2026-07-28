@@ -12,6 +12,7 @@ import { useCan } from "@/components/SessionContext";
 import { fetchItems, fetchTaxRates } from "@/api/entities";
 import { posCheckoutFn } from "@/api/pos";
 import { formatMinor } from "@/lib/money";
+import { useIdempotencyKey } from "@/lib/idempotency";
 
 export const Route = createFileRoute("/pos/")({
   loader: async () => {
@@ -49,6 +50,7 @@ function POS() {
   const [search, setSearch] = useState("");
   const [tender, setTender] = useState<string>("Cash");
   const [charging, setCharging] = useState(false);
+  const idem = useIdempotencyKey();
 
   const defaultTax = taxRates[0] ?? null;
 
@@ -101,6 +103,7 @@ function POS() {
       const result = await posCheckoutFn({
         data: {
           method: tender,
+          idempotencyKey: idem.key,
           lines: cartLines.map((l) => ({
             itemId: l.item.id,
             description: l.item.name,
@@ -110,6 +113,7 @@ function POS() {
           })),
         },
       });
+      idem.renew();
       toast.success(
         `Sale complete — ${result.invoiceNumber} for ${formatMinor(result.totalMinor)}`,
       );

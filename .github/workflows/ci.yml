@@ -67,6 +67,8 @@ jobs:
         run: bun run db:verify
       - name: Ledger unit tests
         run: bun run db:test
+      - name: Idempotency integration test
+        run: bun run db:test:idempotency
 
   # ── End-to-end: every module renders + the marquee flows post ──────────────
   e2e:

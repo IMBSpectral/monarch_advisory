@@ -16,6 +16,7 @@
     "db:seed": "MONARCH_DB_ROLE=admin bun --env-file=.env src/db/seed.ts",
     "db:verify": "MONARCH_DB_ROLE=admin bun --env-file=.env src/db/verify.ts",
     "db:test": "MONARCH_DB_ROLE=admin bun --env-file=.env src/db/test-ledger.ts",
+    "db:test:idempotency": "MONARCH_DB_ROLE=admin bun --env-file=.env src/db/test-idempotency.ts",
     "e2e": "playwright test"
   },
   "dependencies": {

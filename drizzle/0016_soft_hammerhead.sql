@@ -1,0 +1,1 @@
+ALTER TABLE "organizations" ADD COLUMN "approval_threshold_minor" bigint;

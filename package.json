@@ -18,6 +18,7 @@
     "db:test": "MONARCH_DB_ROLE=admin bun --env-file=.env src/db/test-ledger.ts",
     "db:test:idempotency": "MONARCH_DB_ROLE=admin bun --env-file=.env src/db/test-idempotency.ts",
     "db:test:reconciliation": "MONARCH_DB_ROLE=admin bun --env-file=.env src/db/test-reconciliation.ts",
+    "db:test:approvals": "MONARCH_DB_ROLE=admin bun --env-file=.env src/db/test-approvals.ts",
     "e2e": "playwright test"
   },
   "dependencies": {

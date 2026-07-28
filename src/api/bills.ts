@@ -12,6 +12,7 @@ import { z } from "zod";
 import { withOrg } from "@/db/client";
 import { bills, contacts } from "@/db/schema";
 import { createBill, postBill, recordVendorPayment, voidBill } from "@/server/bills";
+import { LedgerError } from "@/server/ledger";
 import { requireAuth, requirePermission } from "@/server/session";
 import { assertCan } from "@/server/auth";
 import { withIdempotency } from "@/server/idempotency";
@@ -36,6 +37,7 @@ export const fetchBills = createServerFn({ method: "GET" })
           currency: bills.currency,
           totalMinor: bills.totalMinor,
           amountPaidMinor: bills.amountPaidMinor,
+          createdByUserId: bills.createdByUserId,
           vendorName: contacts.displayName,
           contactId: contacts.id,
         })
@@ -56,6 +58,7 @@ export const fetchBills = createServerFn({ method: "GET" })
       currency: r.currency,
       vendorName: r.vendorName,
       contactId: r.contactId,
+      createdByUserId: r.createdByUserId,
       total: r.totalMinor.toString(),
       paid: r.amountPaidMinor.toString(),
       balance: (r.totalMinor - r.amountPaidMinor).toString(),
@@ -110,14 +113,27 @@ export const createBillFn = createServerFn({ method: "POST" })
         })),
       });
 
+      // Post-immediately is a convenience for the maker. If this bill needs a
+      // separate approver (maker-checker), don't fail the whole request — the
+      // bill is created and left as a draft for a checker to post.
+      let awaitingApproval = false;
       if (data.postImmediately) {
-        await postBill({ orgId, billId: result.billId, userId: principal.userId });
+        try {
+          await postBill({ orgId, billId: result.billId, userId: principal.userId });
+        } catch (err) {
+          if (err instanceof LedgerError && err.code === "APPROVAL_SEPARATION_REQUIRED") {
+            awaitingApproval = true;
+          } else {
+            throw err;
+          }
+        }
       }
 
       return {
         billId: result.billId,
         billNumber: result.billNumber,
         total: result.totalMinor.toString(),
+        awaitingApproval,
       };
     });
   });

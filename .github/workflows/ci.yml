@@ -71,6 +71,8 @@ jobs:
         run: bun run db:test:idempotency
       - name: Bank reconciliation integration test
         run: bun run db:test:reconciliation
+      - name: Maker-checker approvals integration test
+        run: bun run db:test:approvals
 
   # ── End-to-end: every module renders + the marquee flows post ──────────────
   e2e:

@@ -248,6 +248,12 @@ export const organizations = pgTable(
      * period — enforced in the posting engine, see `assertPeriodOpen`.
      */
     booksClosedThrough: date("books_closed_through"),
+    /**
+     * Maker-checker gate. When set, a bill whose total is at or above this amount
+     * (minor units) may not be posted by the same person who created it — a
+     * different user must post it, giving separation of duties. Null = off.
+     */
+    approvalThresholdMinor: money("approval_threshold_minor"),
     timezone: text("timezone").notNull().default("Asia/Kolkata"),
     ...timestamps,
   },

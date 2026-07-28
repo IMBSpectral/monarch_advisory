@@ -1,7 +1,7 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Building2, Shield, Receipt, UserPlus } from "lucide-react";
+import { Building2, ShieldCheck, Shield, Receipt, UserPlus } from "lucide-react";
 
 import { PageHeader } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
@@ -27,6 +27,8 @@ import {
 import { EntityFormDialog } from "@/components/EntityFormDialog";
 import { useCan, useSession, type Role } from "@/components/SessionContext";
 import { fetchMe, fetchMembersFn, addMemberFn, changeMemberRoleFn } from "@/api/auth";
+import { fetchApprovalSettings, updateApprovalThresholdFn } from "@/api/settings";
+import { formatMinor } from "@/lib/money";
 
 const ROLE_OPTIONS: Role[] = ["viewer", "staff", "accountant", "admin", "owner"];
 
@@ -37,7 +39,8 @@ export const Route = createFileRoute("/settings/")({
     const me = await fetchMe();
     const canManage = me ? ["admin", "owner"].includes(me.role) : false;
     const members = canManage ? await fetchMembersFn() : [];
-    return { me, members, canManage };
+    const approval = await fetchApprovalSettings();
+    return { me, members, canManage, approval };
   },
   component: Settings,
 });
@@ -51,9 +54,10 @@ function roleBadgeVariant(role: string): "default" | "secondary" | "outline" {
 }
 
 function Settings() {
-  const { members, canManage } = Route.useLoaderData();
+  const { members, canManage, approval } = Route.useLoaderData();
   const session = useSession();
   const canInvite = useCan("member:manage");
+  const canManageSettings = useCan("settings:manage");
 
   // The org can never be left ownerless, so we don't offer to demote the last
   // owner — the server would reject it anyway.
@@ -129,6 +133,11 @@ function Settings() {
           </div>
         </Card>
 
+        <ApprovalsCard
+          thresholdMinor={approval.approvalThresholdMinor}
+          canManage={canManageSettings}
+        />
+
         <Card className="p-5 lg:col-span-2">
           <div className="flex items-center gap-2 mb-4">
             <Shield className="h-4 w-4 text-brand" />
@@ -170,6 +179,103 @@ function Settings() {
         </Card>
       </div>
     </>
+  );
+}
+
+/**
+ * Maker-checker approval threshold. A bill at or above this amount must be posted
+ * by someone other than the person who created it. Stored in minor units; edited
+ * here in whole rupees.
+ */
+function ApprovalsCard({
+  thresholdMinor,
+  canManage,
+}: {
+  thresholdMinor: string | null;
+  canManage: boolean;
+}) {
+  const router = useRouter();
+  const [rupees, setRupees] = useState(
+    thresholdMinor ? (BigInt(thresholdMinor) / 100n).toString() : "",
+  );
+  const [saving, setSaving] = useState(false);
+
+  async function save(thresholdMinorValue: string | null) {
+    setSaving(true);
+    try {
+      await updateApprovalThresholdFn({ data: { thresholdMinor: thresholdMinorValue } });
+      toast.success(
+        thresholdMinorValue
+          ? `Approvals on — bills at or above ${formatMinor(thresholdMinorValue, { showPaise: false })} need a second person.`
+          : "Approvals off.",
+      );
+      await router.invalidate();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not save.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Card className="p-5">
+      <div className="flex items-center gap-2 mb-4">
+        <ShieldCheck className="h-4 w-4 text-brand" />
+        <h3 className="font-semibold">Approvals (maker-checker)</h3>
+      </div>
+      <p className="text-sm text-muted-foreground">
+        A bill at or above this amount can’t be posted by the person who created it — a different
+        user must post it. Leave blank to switch approvals off.
+      </p>
+      {!canManage ? (
+        <p className="mt-4 text-sm">
+          {thresholdMinor ? (
+            <>
+              Current threshold:{" "}
+              <span className="font-medium">
+                {formatMinor(thresholdMinor, { showPaise: false })}
+              </span>
+            </>
+          ) : (
+            "Approvals are off."
+          )}
+        </p>
+      ) : (
+        <div className="mt-4 flex flex-wrap items-end gap-3">
+          <div>
+            <Label htmlFor="approval-threshold" className="text-xs">
+              Threshold (₹)
+            </Label>
+            <Input
+              id="approval-threshold"
+              inputMode="numeric"
+              className="mt-1 w-48"
+              placeholder="e.g. 50000"
+              value={rupees}
+              onChange={(e) => setRupees(e.target.value.replace(/[^\d]/g, ""))}
+            />
+          </div>
+          <Button
+            disabled={saving}
+            onClick={() => save(rupees === "" ? null : `${BigInt(rupees) * 100n}`)}
+          >
+            Save
+          </Button>
+          {thresholdMinor ? (
+            <Button
+              variant="ghost"
+              disabled={saving}
+              onClick={() => {
+                setRupees("");
+                save(null);
+              }}
+            >
+              Turn off
+            </Button>
+          ) : null}
+        </div>
+      )}
+    </Card>
   );
 }
 

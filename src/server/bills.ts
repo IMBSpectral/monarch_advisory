@@ -290,6 +290,23 @@ export async function postBill(args: {
       );
     }
 
+    // Maker-checker. When the org sets an approval threshold, a bill at or above
+    // it may not be posted by the person who created it — a different user must
+    // post it, which is the approval. This is separation of duties: the check
+    // that stops one person from both raising and clearing a large liability.
+    const [org] = await tx
+      .select({ threshold: organizations.approvalThresholdMinor })
+      .from(organizations)
+      .where(eq(organizations.id, args.orgId));
+    const threshold = org?.threshold ?? null;
+    const needsApproval = threshold !== null && bill.totalMinor >= threshold;
+    if (needsApproval && (!args.userId || args.userId === bill.createdByUserId)) {
+      throw new LedgerError(
+        `Bill ${bill.billNumber} needs approval: a bill at or above the org's approval threshold must be posted by someone other than the person who created it.`,
+        "APPROVAL_SEPARATION_REQUIRED",
+      );
+    }
+
     const lines = await tx.select().from(billLines).where(eq(billLines.billId, bill.id));
 
     const apAccountId = await resolveControlAccount(tx, args.orgId, "accounts_payable");
@@ -411,6 +428,7 @@ export async function postBill(args: {
         status: "open",
         journalEntryId: entry.entryId,
         approvedAt: new Date(),
+        approvedByUserId: args.userId ?? null,
         updatedAt: new Date(),
       })
       .where(eq(bills.id, bill.id));

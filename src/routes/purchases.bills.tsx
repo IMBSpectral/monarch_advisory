@@ -33,20 +33,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useCan } from "@/components/SessionContext";
-import { fetchBills, createBillFn } from "@/api/bills";
+import { useCan, useSession } from "@/components/SessionContext";
+import { fetchBills, createBillFn, postBillFn } from "@/api/bills";
+import { fetchApprovalSettings } from "@/api/settings";
 import { useIdempotencyKey } from "@/lib/idempotency";
 import { fetchContacts, fetchTaxRates } from "@/api/entities";
 import { formatMinor } from "@/lib/money";
 
 export const Route = createFileRoute("/purchases/bills")({
   loader: async () => {
-    const [bills, vendors, taxRates] = await Promise.all([
+    const [bills, vendors, taxRates, approval] = await Promise.all([
       fetchBills({ data: {} }),
       fetchContacts({ data: { type: "vendor" } }),
       fetchTaxRates(),
+      fetchApprovalSettings(),
     ]);
-    return { bills, vendors, taxRates };
+    return { bills, vendors, taxRates, approval };
   },
   component: Bills,
 });
@@ -72,9 +74,31 @@ const statusLabel: Record<string, string> = {
 };
 
 function Bills() {
-  const { bills, vendors, taxRates } = Route.useLoaderData();
+  const { bills, vendors, taxRates, approval } = Route.useLoaderData();
   const canCreate = useCan("document:create");
   const canPost = useCan("ledger:post");
+  const session = useSession();
+  const router = useRouter();
+  const [postingId, setPostingId] = useState<string | null>(null);
+
+  const threshold = approval.approvalThresholdMinor
+    ? BigInt(approval.approvalThresholdMinor)
+    : null;
+  const needsApproval = (b: (typeof bills)[number]) =>
+    threshold !== null && BigInt(b.total) >= threshold;
+
+  async function post(b: (typeof bills)[number]) {
+    setPostingId(b.id);
+    try {
+      await postBillFn({ data: { billId: b.id } });
+      toast.success(`${b.billNumber} posted.`);
+      await router.invalidate();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not post the bill.");
+    } finally {
+      setPostingId(null);
+    }
+  }
 
   return (
     <>
@@ -88,6 +112,13 @@ function Bills() {
         }
       />
       <div className="p-6">
+        {threshold !== null ? (
+          <p className="mb-3 text-sm text-muted-foreground">
+            Approvals on — a bill at or above{" "}
+            <span className="font-medium">{formatMinor(threshold, { showPaise: false })}</span> must
+            be posted by someone other than the person who raised it.
+          </p>
+        ) : null}
         <Card>
           <Table>
             <TableHeader>
@@ -99,35 +130,72 @@ function Bills() {
                 <TableHead className="text-right">Amount</TableHead>
                 <TableHead className="text-right">Balance</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {bills.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="py-10 text-center text-muted-foreground">
+                  <TableCell colSpan={8} className="py-10 text-center text-muted-foreground">
                     No bills yet. Record your first vendor bill.
                   </TableCell>
                 </TableRow>
               ) : (
-                bills.map((b) => (
-                  <TableRow key={b.id} className="hover:bg-muted/40">
-                    <TableCell className="text-brand font-medium">{b.billNumber}</TableCell>
-                    <TableCell>{b.vendorName}</TableCell>
-                    <TableCell className="text-muted-foreground">{b.billDate}</TableCell>
-                    <TableCell className="text-muted-foreground">{b.dueDate}</TableCell>
-                    <TableCell className="text-right font-medium tabular-nums">
-                      {formatMinor(b.total)}
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {formatMinor(b.balance)}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className={statusStyle[b.status] ?? ""}>
-                        {statusLabel[b.status] ?? b.status}
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
-                ))
+                bills.map((b) => {
+                  const isDraft = b.status === "draft";
+                  const gated = isDraft && needsApproval(b);
+                  const ownBill = session?.userId === b.createdByUserId;
+                  return (
+                    <TableRow key={b.id} className="hover:bg-muted/40">
+                      <TableCell className="text-brand font-medium">{b.billNumber}</TableCell>
+                      <TableCell>{b.vendorName}</TableCell>
+                      <TableCell className="text-muted-foreground">{b.billDate}</TableCell>
+                      <TableCell className="text-muted-foreground">{b.dueDate}</TableCell>
+                      <TableCell className="text-right font-medium tabular-nums">
+                        {formatMinor(b.total)}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {formatMinor(b.balance)}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1.5">
+                          <Badge variant="outline" className={statusStyle[b.status] ?? ""}>
+                            {statusLabel[b.status] ?? b.status}
+                          </Badge>
+                          {gated ? (
+                            <Badge
+                              variant="outline"
+                              className="border-warning/30 bg-warning/10 text-warning-foreground"
+                            >
+                              Needs approval
+                            </Badge>
+                          ) : null}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {isDraft && canPost ? (
+                          gated && ownBill ? (
+                            <span className="text-xs text-muted-foreground">
+                              Another user must approve
+                            </span>
+                          ) : (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={postingId === b.id}
+                              onClick={() => post(b)}
+                            >
+                              {postingId === b.id ? (
+                                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                              ) : null}
+                              {gated ? "Approve & post" : "Post"}
+                            </Button>
+                          )
+                        ) : null}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               )}
             </TableBody>
           </Table>
@@ -245,9 +313,11 @@ function NewBillDialog({
       setOpen(false);
       reset();
       toast.success(
-        postNow
-          ? `Bill ${result.billNumber} recorded and posted`
-          : `Draft bill ${result.billNumber} saved`,
+        result.awaitingApproval
+          ? `Bill ${result.billNumber} saved — it needs approval from another user before it posts`
+          : postNow
+            ? `Bill ${result.billNumber} recorded and posted`
+            : `Draft bill ${result.billNumber} saved`,
       );
       await router.invalidate();
     } catch (err) {

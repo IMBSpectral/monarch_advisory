@@ -78,7 +78,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { useRole } from "@/components/RoleContext";
 import { toast } from "sonner";
-import { inr } from "@/data/mock";
+import { inr } from "@/lib/money";
 import { fetchBankTransactions, fetchBankSummary } from "@/api/entities";
 import { fetchInvoices } from "@/api";
 import { fetchBills } from "@/api/bills";

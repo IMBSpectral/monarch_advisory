@@ -25,7 +25,19 @@ import {
 } from "recharts";
 import { useState } from "react";
 import { toast } from "sonner";
-import { cashForecast, inr } from "@/data/mock";
+import { inr } from "@/lib/money";
+
+// Illustrative forecast for the preview chart below — NOT computed from your
+// ledger. Lives here (not in shared fixtures) so this preview route carries no
+// dependency on the demo data module.
+const cashForecast = [
+  { m: "Feb", actual: 6800000, forecast: 6800000 },
+  { m: "Mar", forecast: 7100000 },
+  { m: "Apr", forecast: 7450000 },
+  { m: "May", forecast: 7300000 },
+  { m: "Jun", forecast: 7900000 },
+  { m: "Jul", forecast: 8300000 },
+];
 import { useSession } from "@/components/SessionContext";
 
 export const Route = createFileRoute("/ai/")({ component: AI });
@@ -56,6 +68,17 @@ function AI() {
   return (
     <>
       <PageHeader title="AI Foundation" subtitle="Chat, AI Accountant, AI CFO & Knowledge Base" />
+      <div className="px-6 pt-4">
+        <div className="flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/10 px-4 py-3 text-sm">
+          <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-warning" />
+          <p className="text-muted-foreground">
+            <span className="font-medium text-foreground">Preview only.</span> This assistant, its
+            example replies and the forecast below are illustrative and are{" "}
+            <span className="font-medium text-foreground">not</span> computed from your ledger.
+            Connecting live AI analysis to your books is on the roadmap.
+          </p>
+        </div>
+      </div>
       <div className="p-6 grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-4">
         <div className="space-y-4">
           {/* Chat surface */}

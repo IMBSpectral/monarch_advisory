@@ -10,11 +10,44 @@ import { Plus, Info } from "lucide-react";
 import { EntityFormDialog } from "@/components/EntityFormDialog";
 import { useCan } from "@/components/SessionContext";
 import { createContactFn } from "@/api/entities";
-import { leads, inr } from "@/data/mock";
+import { inr } from "@/lib/money";
 
 export const Route = createFileRoute("/crm/")({ component: CRM });
 
 const stages = ["Leads", "Qualified", "Proposal", "Negotiation", "Won"];
+
+// Illustrative pipeline — a CRM deal model isn't implemented, so these stages
+// are sample data (the banner below says so). Inlined here so this route carries
+// no dependency on the shared demo fixtures. The one real thing is New Lead,
+// which saves a genuine customer contact.
+const leads = [
+  {
+    name: "Piramal Enterprises",
+    stage: "Qualified",
+    owner: "Anita R.",
+    value: 850000,
+    source: "Website",
+  },
+  {
+    name: "Godrej Consumer",
+    stage: "Proposal",
+    owner: "Rahul M.",
+    value: 1240000,
+    source: "Referral",
+  },
+  {
+    name: "Bharti Airtel",
+    stage: "Negotiation",
+    owner: "Priya S.",
+    value: 2100000,
+    source: "Outbound",
+  },
+  { name: "Mahindra Group", stage: "Proposal", owner: "Rahul M.", value: 3400000, source: "Event" },
+  { name: "Asian Paints", stage: "Leads", owner: "Anita R.", value: 620000, source: "LinkedIn" },
+  { name: "HDFC Bank", stage: "Won", owner: "Priya S.", value: 4800000, source: "Partner" },
+  { name: "ITC Limited", stage: "Qualified", owner: "Anita R.", value: 980000, source: "Website" },
+  { name: "Marico", stage: "Negotiation", owner: "Rahul M.", value: 1560000, source: "Referral" },
+];
 
 function CRM() {
   const canManage = useCan("contact:manage");

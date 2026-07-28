@@ -36,5 +36,25 @@ export default tseslint.config(
       "@typescript-eslint/no-unused-vars": "off",
     },
   },
+  {
+    // Production surfaces must not import the demo fixtures — a live financial
+    // screen showing sample amounts is the "F-04" risk from the accounting audit.
+    // This makes the build fail if anyone reintroduces a fixture import here.
+    files: ["src/routes/**/*.{ts,tsx}", "src/components/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["@/data/mock", "**/data/mock"],
+              message:
+                "Production routes/components must not import demo fixtures (@/data/mock). Use a live server function, or inline clearly-labelled sample data on a preview-only surface.",
+            },
+          ],
+        },
+      ],
+    },
+  },
   eslintPluginPrettier,
 );

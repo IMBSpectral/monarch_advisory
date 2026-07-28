@@ -117,6 +117,23 @@ export const fetchDashboard = createServerFn({ method: "GET" })
 
       const aging = await getReceivablesAging(tx, orgId, to);
 
+      // Revenue by income account for the period — a real ledger breakdown that
+      // replaces the old hardcoded "category" pie.
+      const revenueByAccount = (await tx.execute(sql`
+      select a.name as name,
+             coalesce(-sum(jl.amount_minor), 0) as amount
+      from journal_lines jl
+      join journal_entries je on je.id = jl.entry_id
+      join accounts a         on a.id = jl.account_id
+      where jl.org_id = ${orgId}
+        and je.status in ('posted', 'reversed')
+        and je.entry_date between ${from} and ${to}
+        and a.type = 'income'
+      group by a.name
+      having coalesce(-sum(jl.amount_minor), 0) <> 0
+      order by 2 desc
+    `)) as unknown as Array<Record<string, string>>;
+
       return {
         organization: {
           name: org.name,
@@ -149,6 +166,7 @@ export const fetchDashboard = createServerFn({ method: "GET" })
             r.over90Minor
           ).toString(),
         })),
+        revenueByAccount: revenueByAccount.map((r) => ({ name: r.name, amount: r.amount })),
       };
     });
   });
@@ -600,6 +618,30 @@ export const fetchDepositAccounts = createServerFn({ method: "GET" }).handler(as
       )
       .orderBy(accounts.code);
     return rows;
+  });
+});
+
+export const fetchWarehouses = createServerFn({ method: "GET" }).handler(async () => {
+  const orgId = await currentOrgId();
+  return withOrg(orgId, async (tx) => {
+    const rows = (await tx.execute(sql`
+      select w.id, w.code, w.name, w.is_default,
+             count(distinct l.item_id) filter (where l.on_hand_qty <> 0) as item_count,
+             coalesce(sum(l.value_minor), 0)                             as stock_value_minor
+      from warehouses w
+      left join item_stock_levels l on l.warehouse_id = w.id
+      where w.org_id = ${orgId}
+      group by w.id, w.code, w.name, w.is_default
+      order by w.is_default desc, w.name
+    `)) as unknown as Array<Record<string, string | boolean | null>>;
+    return rows.map((r) => ({
+      id: r.id as string,
+      code: r.code as string,
+      name: r.name as string,
+      isDefault: r.is_default as boolean,
+      itemCount: Number(r.item_count ?? 0),
+      stockValueMinor: (r.stock_value_minor as string) ?? "0",
+    }));
   });
 });
 

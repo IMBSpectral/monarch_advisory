@@ -11,8 +11,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { fetchDashboard } from "@/api";
-import { formatMinor } from "@/lib/money";
-import { inr } from "@/data/mock";
+import { formatMinor, inr } from "@/lib/money";
 
 export const Route = createFileRoute("/sales/")({
   // Real ledger figures, loaded on the server so the first paint has numbers.

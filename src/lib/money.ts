@@ -31,6 +31,16 @@ export function formatMinor(
   return `${negative ? "-" : ""}${symbol}${grouped}${showPaise ? `.${paise}` : ""}`;
 }
 
+/**
+ * Format a plain rupee number (NOT minor units) for chart axes/tooltips, e.g.
+ * 285000 → "₹2,85,000". Display-only — never feed the result back into a
+ * calculation. Lives here (not in the demo fixtures) so production routes don't
+ * import `@/data/mock`.
+ */
+export function inr(rupees: number): string {
+  return "₹" + rupees.toLocaleString("en-IN", { maximumFractionDigits: 0 });
+}
+
 /** Signed +/- prefix, for deltas. */
 export function formatMinorSigned(
   minor: string | bigint,

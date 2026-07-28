@@ -28,8 +28,7 @@ import {
   Cell,
 } from "recharts";
 import { fetchDashboard } from "@/api";
-import { formatMinor } from "@/lib/money";
-import { aiInsights, inr } from "@/data/mock";
+import { formatMinor, inr } from "@/lib/money";
 
 export const Route = createFileRoute("/")({
   // Loads on the server during SSR, so the first paint already has real numbers.
@@ -72,23 +71,27 @@ function KPI({
   );
 }
 
-// Still fixtures — there is no inventory-valuation or category-revenue query yet.
-// Kept visually so the demo reads complete, but labelled so nobody mistakes it
-// for ledger data.
-const pieData = [
-  { name: "Peripherals", value: 32, color: "oklch(0.55 0.14 165)" },
-  { name: "Displays", value: 24, color: "oklch(0.45 0.15 255)" },
-  { name: "Laptops", value: 21, color: "oklch(0.7 0.15 55)" },
-  { name: "Audio", value: 14, color: "oklch(0.65 0.2 320)" },
-  { name: "Other", value: 9, color: "oklch(0.55 0.18 25)" },
+const PIE_COLORS = [
+  "oklch(0.55 0.14 165)",
+  "oklch(0.45 0.15 255)",
+  "oklch(0.7 0.15 55)",
+  "oklch(0.65 0.2 320)",
+  "oklch(0.55 0.18 25)",
+  "oklch(0.6 0.1 200)",
 ];
 
-function MockBadge() {
-  return (
-    <Badge variant="outline" className="text-[9px] uppercase tracking-wider text-muted-foreground">
-      Sample data
-    </Badge>
-  );
+/** Top revenue accounts → pie slices (rupees), collapsing the tail into "Other". */
+function toRevenuePie(rows: { name: string; amount: string }[]) {
+  const sorted = [...rows].sort((a, b) => Number(BigInt(b.amount) - BigInt(a.amount)));
+  const top = sorted.slice(0, 5);
+  const rest = sorted.slice(5).reduce((a, r) => a + BigInt(r.amount), 0n);
+  const slices = top.map((r, i) => ({
+    name: r.name,
+    value: Number(BigInt(r.amount) / 100n),
+    color: PIE_COLORS[i % PIE_COLORS.length],
+  }));
+  if (rest > 0n) slices.push({ name: "Other", value: Number(rest / 100n), color: PIE_COLORS[5] });
+  return slices;
 }
 
 function LiveBadge() {
@@ -101,7 +104,45 @@ function LiveBadge() {
 
 function Dashboard() {
   const data = Route.useLoaderData();
-  const { summary, trend, topDebtors, organization, period } = data;
+  const { summary, trend, topDebtors, organization, period, revenueByAccount } = data;
+  const pieData = toRevenuePie(revenueByAccount);
+
+  // Highlights are DERIVED from the loaded ledger figures — no fabricated
+  // "AI" advice. Each is a plain fact about the current books.
+  const netProfitMinor = BigInt(summary.netProfit);
+  const overdueMinor = BigInt(summary.overdueReceivables);
+  const highlights: { icon: React.ElementType; tone: string; title: string; desc: string }[] = [
+    {
+      icon: netProfitMinor < 0n ? AlertTriangle : TrendingUp,
+      tone: netProfitMinor < 0n ? "text-destructive" : "text-success",
+      title: netProfitMinor < 0n ? "Operating at a loss" : "Profitable this period",
+      desc: `Net ${formatMinor(summary.netProfit, { showPaise: false })} on ${formatMinor(summary.revenue, { showPaise: false })} revenue`,
+    },
+    {
+      icon: Wallet,
+      tone: "text-blue-600",
+      title: "Cash on hand",
+      desc: `${formatMinor(summary.cash, { showPaise: false })} across all bank & cash accounts`,
+    },
+    {
+      icon: overdueMinor > 0n ? AlertTriangle : FileText,
+      tone: overdueMinor > 0n ? "text-warning" : "text-success",
+      title: overdueMinor > 0n ? "Overdue receivables" : "Receivables on track",
+      desc:
+        overdueMinor > 0n
+          ? `${formatMinor(summary.overdueReceivables, { showPaise: false })} past due — chase collections`
+          : "Nothing past its due date",
+    },
+    {
+      icon: Users,
+      tone: "text-brand",
+      title: topDebtors.length > 0 ? `Top debtor: ${topDebtors[0].name}` : "No open receivables",
+      desc:
+        topDebtors.length > 0
+          ? `Owes ${formatMinor(topDebtors[0].total, { showPaise: false })}`
+          : "Every invoice is settled",
+    },
+  ];
 
   // Recharts needs numbers, and these are display-only aggregates, so converting
   // to rupees here is safe. Never do this for anything that feeds a calculation.
@@ -247,62 +288,67 @@ function Dashboard() {
 
         <Card className="p-5">
           <div className="flex items-center gap-2">
-            <h3 className="font-semibold">Revenue by Category</h3>
-            <MockBadge />
+            <h3 className="font-semibold">Revenue by Account</h3>
+            <LiveBadge />
           </div>
-          <p className="text-xs text-muted-foreground mb-4">Needs item-level revenue reporting</p>
-          <ResponsiveContainer width="100%" height={200}>
-            <PieChart>
-              <Pie
-                data={pieData}
-                innerRadius={55}
-                outerRadius={85}
-                paddingAngle={2}
-                dataKey="value"
-              >
-                {pieData.map((d, i) => (
-                  <Cell key={i} fill={d.color} />
+          <p className="text-xs text-muted-foreground mb-4">
+            Posted revenue this period, by account
+          </p>
+          {pieData.length === 0 ? (
+            <p className="py-16 text-center text-sm text-muted-foreground">
+              No revenue posted in this period yet.
+            </p>
+          ) : (
+            <>
+              <ResponsiveContainer width="100%" height={200}>
+                <PieChart>
+                  <Pie
+                    data={pieData}
+                    innerRadius={55}
+                    outerRadius={85}
+                    paddingAngle={2}
+                    dataKey="value"
+                  >
+                    {pieData.map((d, i) => (
+                      <Cell key={i} fill={d.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(v: number) => inr(v)} />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="space-y-1.5 mt-2">
+                {pieData.map((d) => (
+                  <div key={d.name} className="flex items-center justify-between text-xs">
+                    <span className="flex items-center gap-2">
+                      <span className="h-2 w-2 rounded-full" style={{ background: d.color }} />
+                      {d.name}
+                    </span>
+                    <span className="tabular-nums font-medium">{inr(d.value)}</span>
+                  </div>
                 ))}
-              </Pie>
-              <Tooltip />
-            </PieChart>
-          </ResponsiveContainer>
-          <div className="space-y-1.5 mt-2">
-            {pieData.map((d) => (
-              <div key={d.name} className="flex items-center justify-between text-xs">
-                <span className="flex items-center gap-2">
-                  <span className="h-2 w-2 rounded-full" style={{ background: d.color }} />
-                  {d.name}
-                </span>
-                <span className="tabular-nums font-medium">{d.value}%</span>
               </div>
-            ))}
-          </div>
+            </>
+          )}
         </Card>
       </div>
 
       <Card className="p-5">
         <div className="flex items-center gap-2 mb-4">
           <Sparkles className="h-4 w-4 text-brand" />
-          <h3 className="font-semibold">AI Insights</h3>
-          <MockBadge />
+          <h3 className="font-semibold">Highlights</h3>
+          <LiveBadge />
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
-          {aiInsights.map((ins, i) => (
+          {highlights.map((h, i) => (
             <div
               key={i}
-              className="rounded-xl border bg-gradient-to-br from-brand/5 to-transparent p-4 hover:shadow-elegant transition-all"
+              className="rounded-xl border bg-gradient-to-br from-brand/5 to-transparent p-4"
             >
               <div className="flex items-start gap-2.5">
-                {ins.icon === "trending" && <TrendingUp className="h-4 w-4 text-success mt-0.5" />}
-                {ins.icon === "alert" && <AlertTriangle className="h-4 w-4 text-warning mt-0.5" />}
-                {ins.icon === "sparkle" && <Sparkles className="h-4 w-4 text-brand mt-0.5" />}
-                {ins.icon === "warn" && (
-                  <AlertTriangle className="h-4 w-4 text-destructive mt-0.5" />
-                )}
+                <h.icon className={`h-4 w-4 mt-0.5 ${h.tone}`} />
                 <div>
-                  <p className="text-sm font-medium">{ins.title}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{ins.desc}</p>
+                  <p className="text-sm font-medium">{h.title}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{h.desc}</p>
                 </div>
               </div>
             </div>

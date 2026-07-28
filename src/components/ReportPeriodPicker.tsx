@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useSession } from "@/components/SessionContext";
 import {
   PRESETS,
   presetLabel,
@@ -42,9 +43,10 @@ type AsOfProps = {
  */
 export function ReportPeriodPicker(props: RangeProps | AsOfProps) {
   const [open, setOpen] = useState(false);
+  const startMonth = useSession()?.fiscalYearStartMonth ?? 4;
 
   const applyPreset = (key: FixedPreset) => {
-    const r = resolvePreset(key);
+    const r = resolvePreset(key, new Date(), startMonth);
     if (props.mode === "range") props.onApply({ preset: key, from: r.from, to: r.to });
     else props.onApply({ preset: key, asOf: r.to });
     setOpen(false);

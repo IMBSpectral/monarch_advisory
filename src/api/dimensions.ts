@@ -13,14 +13,12 @@ import { withOrg } from "@/db/client";
 import { costCenters } from "@/db/schema";
 import { requireAuth, requirePermission } from "@/server/session";
 import { credit, debit, postJournalEntry } from "@/server/ledger";
+import { fiscalYearToDateISO } from "@/lib/fiscal";
 import { getCostCenterPnl, getBudgetVsActual } from "@/server/reports";
 
-function period() {
-  // Fiscal year to date. Matches the app's default reporting window.
-  const now = new Date();
-  const y = now.getUTCFullYear();
-  const fyStart = now.getUTCMonth() + 1 >= 4 ? `${y}-04-01` : `${y - 1}-04-01`;
-  return { from: fyStart, to: now.toISOString().slice(0, 10) };
+function period(startMonth: number) {
+  // Fiscal year to date, per the org's configured fiscal-year start.
+  return fiscalYearToDateISO(new Date().toISOString().slice(0, 10), startMonth);
 }
 
 export const fetchCostCenters = createServerFn({ method: "GET" }).handler(async () => {
@@ -53,8 +51,8 @@ export const createCostCenterFn = createServerFn({ method: "POST" })
   });
 
 export const fetchCostCenterPnl = createServerFn({ method: "GET" }).handler(async () => {
-  const { orgId } = await requireAuth();
-  const per = period();
+  const { orgId, fiscalYearStartMonth } = await requireAuth();
+  const per = period(fiscalYearStartMonth);
   return withOrg(orgId, async (tx) => {
     const rows = await getCostCenterPnl(tx, orgId, per.from, per.to);
     return rows.map((r) => ({
@@ -67,8 +65,8 @@ export const fetchCostCenterPnl = createServerFn({ method: "GET" }).handler(asyn
 });
 
 export const fetchBudgetVsActual = createServerFn({ method: "GET" }).handler(async () => {
-  const { orgId } = await requireAuth();
-  const per = period();
+  const { orgId, fiscalYearStartMonth } = await requireAuth();
+  const per = period(fiscalYearStartMonth);
   const fiscalYear = Number(per.from.slice(0, 4));
   return withOrg(orgId, async (tx) => {
     const rows = await getBudgetVsActual(tx, orgId, fiscalYear, per.from, per.to);

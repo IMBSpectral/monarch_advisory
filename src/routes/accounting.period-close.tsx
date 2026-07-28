@@ -70,6 +70,13 @@ function PeriodClose() {
       />
       <div className="p-6">
         <Card className="mx-auto max-w-xl p-6">
+          <div className="mb-4 rounded-lg border bg-muted/30 p-3 text-sm">
+            <span className="font-medium">{status.fiscalYear.label}</span>
+            <span className="text-muted-foreground">
+              {" "}
+              · {status.fiscalYear.start} to {status.fiscalYear.end}
+            </span>
+          </div>
           <div className="mb-6 flex items-center justify-between">
             <div>
               <p className="text-xs uppercase tracking-widest text-muted-foreground">

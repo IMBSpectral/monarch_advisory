@@ -29,6 +29,7 @@ import {
   subQuarters,
   subWeeks,
 } from "date-fns";
+import { financialYearStart } from "./fiscal";
 
 export type PresetKey =
   | "today"
@@ -73,18 +74,16 @@ export function presetLabel(key: PresetKey): string {
 const WEEK = { weekStartsOn: 1 as const };
 const fmt = (d: Date) => format(d, "yyyy-MM-dd");
 
-/** 1 April of the financial year that `d` falls in. */
-function financialYearStart(d: Date): Date {
-  const y = d.getFullYear();
-  // getMonth() is 0-indexed, so >= 3 means April or later.
-  return new Date(d.getMonth() >= 3 ? y : y - 1, 3, 1);
-}
-
 /**
  * Resolve a fixed preset to a concrete date range. Call only from event
- * handlers (it reads the clock) — never during render.
+ * handlers (it reads the clock) — never during render. `startMonth` is the org's
+ * fiscal-year start month (1-12); it drives the two financial-year presets.
  */
-export function resolvePreset(key: FixedPreset, today: Date = new Date()): DateRange {
+export function resolvePreset(
+  key: FixedPreset,
+  today: Date = new Date(),
+  startMonth = 4,
+): DateRange {
   switch (key) {
     case "today":
       return { from: fmt(today), to: fmt(today) };
@@ -111,10 +110,10 @@ export function resolvePreset(key: FixedPreset, today: Date = new Date()): DateR
       return { from: fmt(startOfQuarter(q)), to: fmt(endOfQuarter(q)) };
     }
     case "this_financial_year":
-      return { from: fmt(financialYearStart(today)), to: fmt(today) };
+      return { from: fmt(financialYearStart(today, startMonth)), to: fmt(today) };
     case "last_financial_year": {
-      const thisStart = financialYearStart(today);
-      const prevStart = new Date(thisStart.getFullYear() - 1, 3, 1);
+      const thisStart = financialYearStart(today, startMonth);
+      const prevStart = new Date(thisStart.getFullYear() - 1, thisStart.getMonth(), 1);
       return { from: fmt(prevStart), to: fmt(addDays(thisStart, -1)) };
     }
   }

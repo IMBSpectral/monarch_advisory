@@ -10,17 +10,30 @@ import { memberships, organizations } from "@/db/schema";
 import { requireAuth, requirePermission } from "@/server/session";
 import { getPeriodStatus, closePeriod, reopenPeriod } from "@/server/period";
 import { getBalanceSheet, getProfitAndLoss } from "@/server/reports";
+import {
+  financialYearEndISO,
+  financialYearStartISO,
+  fiscalYearLabelISO,
+  fiscalYearToDateISO,
+} from "@/lib/fiscal";
 
-function fiscalPeriod() {
-  const now = new Date();
-  const y = now.getUTCFullYear();
-  const from = now.getUTCMonth() + 1 >= 4 ? `${y}-04-01` : `${y - 1}-04-01`;
-  return { from, to: now.toISOString().slice(0, 10) };
+function fiscalPeriod(startMonth: number) {
+  return fiscalYearToDateISO(new Date().toISOString().slice(0, 10), startMonth);
 }
 
 export const fetchPeriodStatus = createServerFn({ method: "GET" }).handler(async () => {
-  const { orgId } = await requireAuth();
-  return withOrg(orgId, (tx) => getPeriodStatus(tx, orgId));
+  const { orgId, fiscalYearStartMonth } = await requireAuth();
+  const status = await withOrg(orgId, (tx) => getPeriodStatus(tx, orgId));
+  const today = new Date().toISOString().slice(0, 10);
+  return {
+    closedThrough: status.closedThrough,
+    fiscalYearStartMonth,
+    fiscalYear: {
+      label: fiscalYearLabelISO(today, fiscalYearStartMonth),
+      start: financialYearStartISO(today, fiscalYearStartMonth),
+      end: financialYearEndISO(today, fiscalYearStartMonth),
+    },
+  };
 });
 
 export const closePeriodFn = createServerFn({ method: "POST" })
@@ -50,8 +63,8 @@ export const reopenPeriodFn = createServerFn({ method: "POST" })
  * to see.
  */
 export const fetchConsolidation = createServerFn({ method: "GET" }).handler(async () => {
-  const { userId } = await requireAuth();
-  const per = fiscalPeriod();
+  const { userId, fiscalYearStartMonth } = await requireAuth();
+  const per = fiscalPeriod(fiscalYearStartMonth);
 
   // memberships is an identity table (deliberately outside RLS — it resolves the
   // tenant), so it's read on the bare handle, scoped by the authenticated user.

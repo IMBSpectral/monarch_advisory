@@ -113,6 +113,8 @@ export type Principal = {
   orgId: string;
   orgName: string;
   baseCurrency: string;
+  /** Month (1-12) the org's fiscal year starts — drives every fiscal-period calc. */
+  fiscalYearStartMonth: number;
   role: Role;
   /** Fine-grained grants layered on top of the role. */
   permissions: string[];
@@ -348,6 +350,7 @@ export async function resolveSession(token: string | undefined): Promise<Princip
     orgId: membership.orgId,
     orgName: membership.orgName,
     baseCurrency: membership.baseCurrency,
+    fiscalYearStartMonth: membership.fiscalYearStartMonth,
     role: membership.role,
     permissions: membership.permissions,
   };
@@ -368,6 +371,7 @@ async function resolveMembership(
   orgId: string;
   orgName: string;
   baseCurrency: string;
+  fiscalYearStartMonth: number;
   role: Role;
   permissions: string[];
 } | null> {
@@ -378,6 +382,7 @@ async function resolveMembership(
       permissions: memberships.permissions,
       orgName: organizations.name,
       baseCurrency: organizations.baseCurrency,
+      fiscalYearStartMonth: organizations.fiscalYearStartMonth,
       createdAt: memberships.createdAt,
     })
     .from(memberships)
@@ -392,6 +397,7 @@ async function resolveMembership(
     orgId: chosen.orgId,
     orgName: chosen.orgName,
     baseCurrency: chosen.baseCurrency,
+    fiscalYearStartMonth: chosen.fiscalYearStartMonth,
     role: normalizeRole(chosen.role),
     permissions: chosen.permissions ?? [],
   };

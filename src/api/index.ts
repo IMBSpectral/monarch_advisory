@@ -52,6 +52,7 @@ import { createAccount, createBankAccount, listContacts, listItems } from "@/ser
 import { createInvoice, postInvoice, recordCustomerPayment } from "@/server/invoicing";
 import { assertCan } from "@/server/auth";
 import { currentOrgId, requireAuth, requirePermission } from "@/server/session";
+import { fiscalYearToDateISO } from "@/lib/fiscal";
 import { withIdempotency } from "@/server/idempotency";
 
 /* ────────────────────────────────────────────────────────────────────────────
@@ -67,15 +68,14 @@ import { withIdempotency } from "@/server/idempotency";
  * step so the check can't be omitted by accident.
  */
 
-/** Default reporting window: current Indian fiscal year to date. */
-function defaultPeriod(): { from: string; to: string } {
-  const now = new Date();
-  const y = now.getUTCFullYear();
-  const fyStart = now.getUTCMonth() + 1 >= 4 ? y : y - 1;
-  return {
-    from: `${fyStart}-04-01`,
-    to: now.toISOString().slice(0, 10),
-  };
+/**
+ * Default reporting window: the current fiscal year to date, per the org's
+ * configured `fiscalYearStartMonth`. Self-authenticating so callers don't each
+ * have to thread the start month through.
+ */
+async function defaultPeriod(): Promise<{ from: string; to: string }> {
+  const { fiscalYearStartMonth } = await requireAuth();
+  return fiscalYearToDateISO(new Date().toISOString().slice(0, 10), fiscalYearStartMonth);
 }
 
 const periodSchema = z
@@ -90,7 +90,7 @@ export const fetchDashboard = createServerFn({ method: "GET" })
   .validator(periodSchema)
   .handler(async ({ data }) => {
     const orgId = await currentOrgId();
-    const period = defaultPeriod();
+    const period = await defaultPeriod();
     const from = data?.from ?? period.from;
     const to = data?.to ?? period.to;
 
@@ -180,7 +180,7 @@ export const fetchTrialBalance = createServerFn({ method: "GET" })
   .validator(z.object({ asOf: z.string() }).optional())
   .handler(async ({ data }) => {
     const orgId = await currentOrgId();
-    const asOf = data?.asOf ?? defaultPeriod().to;
+    const asOf = data?.asOf ?? (await defaultPeriod()).to;
 
     return withOrg(orgId, async (tx) => {
       const tb = await getTrialBalance(tx, orgId, asOf);
@@ -202,7 +202,7 @@ export const fetchProfitAndLoss = createServerFn({ method: "GET" })
   .validator(periodSchema)
   .handler(async ({ data }) => {
     const orgId = await currentOrgId();
-    const period = defaultPeriod();
+    const period = await defaultPeriod();
 
     return withOrg(orgId, async (tx) => {
       const pnl = await getProfitAndLoss(
@@ -238,7 +238,7 @@ export const fetchBalanceSheet = createServerFn({ method: "GET" })
     const orgId = await currentOrgId();
 
     return withOrg(orgId, async (tx) => {
-      const bs = await getBalanceSheet(tx, orgId, data?.asOf ?? defaultPeriod().to);
+      const bs = await getBalanceSheet(tx, orgId, data?.asOf ?? (await defaultPeriod()).to);
       const ser = (lines: typeof bs.assets) =>
         lines.map((l) => ({ ...l, amountMinor: l.amountMinor.toString() }));
 
@@ -260,7 +260,7 @@ export const fetchGstSummary = createServerFn({ method: "GET" })
   .validator(periodSchema)
   .handler(async ({ data }) => {
     const orgId = await currentOrgId();
-    const period = defaultPeriod();
+    const period = await defaultPeriod();
 
     return withOrg(orgId, async (tx) => {
       const g = await getGstSummary(tx, orgId, data?.from ?? period.from, data?.to ?? period.to);
@@ -283,7 +283,7 @@ export const fetchReceivablesAging = createServerFn({ method: "GET" })
     const orgId = await currentOrgId();
 
     return withOrg(orgId, async (tx) => {
-      const aging = await getReceivablesAging(tx, orgId, data?.asOf ?? defaultPeriod().to);
+      const aging = await getReceivablesAging(tx, orgId, data?.asOf ?? (await defaultPeriod()).to);
       return {
         rows: aging.rows.map((r) => ({
           contactId: r.contactId,
@@ -312,7 +312,7 @@ export const fetchPayablesAging = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     const orgId = await currentOrgId();
     return withOrg(orgId, async (tx) => {
-      const aging = await getPayablesAging(tx, orgId, data?.asOf ?? defaultPeriod().to);
+      const aging = await getPayablesAging(tx, orgId, data?.asOf ?? (await defaultPeriod()).to);
       return {
         rows: aging.rows.map((r) => ({
           contactName: r.contactName,
@@ -339,7 +339,7 @@ export const fetchDayBook = createServerFn({ method: "GET" })
   .validator(z.object({ from: z.string(), to: z.string() }).optional())
   .handler(async ({ data }) => {
     const orgId = await currentOrgId();
-    const period = defaultPeriod();
+    const period = await defaultPeriod();
     return withOrg(orgId, async (tx) => {
       const db = await getDayBook(tx, orgId, data?.from ?? period.from, data?.to ?? period.to);
       return {
@@ -361,7 +361,7 @@ export const fetchCashFlow = createServerFn({ method: "GET" })
   .validator(z.object({ from: z.string(), to: z.string() }).optional())
   .handler(async ({ data }) => {
     const orgId = await currentOrgId();
-    const period = defaultPeriod();
+    const period = await defaultPeriod();
     return withOrg(orgId, async (tx) => {
       const cf = await getCashFlow(tx, orgId, data?.from ?? period.from, data?.to ?? period.to);
       const ser = (l: { label: string; amountMinor: bigint }[]) =>
@@ -385,7 +385,7 @@ export const fetchCashFlow = createServerFn({ method: "GET" })
 
 export const fetchFinancialRatios = createServerFn({ method: "GET" }).handler(async () => {
   const orgId = await currentOrgId();
-  const period = defaultPeriod();
+  const period = await defaultPeriod();
   return withOrg(orgId, async (tx) => {
     const r = await getFinancialRatios(tx, orgId, period.from, period.to);
     return {
@@ -398,7 +398,7 @@ export const fetchFinancialRatios = createServerFn({ method: "GET" }).handler(as
 
 export const fetchMonthlyPnl = createServerFn({ method: "GET" }).handler(async () => {
   const orgId = await currentOrgId();
-  const period = defaultPeriod();
+  const period = await defaultPeriod();
   return withOrg(orgId, async (tx) => {
     const rows = await getMonthlyPnl(tx, orgId, period.from, period.to);
     return rows.map((m) => ({

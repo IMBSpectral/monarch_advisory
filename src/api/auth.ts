@@ -50,6 +50,7 @@ export const fetchMe = createServerFn({ method: "GET" }).handler(async () => {
     orgId: principal.orgId,
     orgName: principal.orgName,
     baseCurrency: principal.baseCurrency,
+    fiscalYearStartMonth: principal.fiscalYearStartMonth,
     role: principal.role,
     permissions: principal.permissions,
     organizations: await listMemberships(principal.userId),

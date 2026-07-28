@@ -23,6 +23,7 @@ export type SessionValue = {
   orgId: string;
   orgName: string;
   baseCurrency: string;
+  fiscalYearStartMonth: number;
   role: Role;
   permissions: string[];
   organizations: Array<{ orgId: string; orgName: string; role: Role }>;

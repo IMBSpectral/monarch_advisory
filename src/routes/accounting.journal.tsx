@@ -5,7 +5,14 @@ import { toast } from "sonner";
 
 import { PageHeader } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -19,7 +26,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { fetchJournal, fetchChartOfAccounts } from "@/api";
 import { fetchCostCenters, createManualEntryFn } from "@/api/dimensions";
 import { useCan } from "@/components/SessionContext";
@@ -85,12 +98,19 @@ function Journals() {
                       {j.source ? j.source.replace(/_/g, " ") : "—"}
                     </TableCell>
                     <TableCell>
-                      <Badge variant="outline" className={`capitalize ${statusStyle[j.status] ?? ""}`}>
+                      <Badge
+                        variant="outline"
+                        className={`capitalize ${statusStyle[j.status] ?? ""}`}
+                      >
                         {j.status}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-right tabular-nums text-muted-foreground">{j.lineCount}</TableCell>
-                    <TableCell className="text-right tabular-nums">{formatMinor(j.amount)}</TableCell>
+                    <TableCell className="text-right tabular-nums text-muted-foreground">
+                      {j.lineCount}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {formatMinor(j.amount)}
+                    </TableCell>
                   </TableRow>
                 ))
               )}
@@ -130,7 +150,8 @@ function NewEntry({ accounts, costCenters }: { accounts: Account[]; costCenters:
     return { dr, cr, balanced: dr > 0 && Math.abs(dr - cr) < 0.005 };
   }, [lines]);
 
-  const update = (i: number, patch: Partial<Line>) => setLines((p) => p.map((l, j) => (j === i ? { ...l, ...patch } : l)));
+  const update = (i: number, patch: Partial<Line>) =>
+    setLines((p) => p.map((l, j) => (j === i ? { ...l, ...patch } : l)));
 
   function reset() {
     setDate(new Date().toISOString().slice(0, 10));
@@ -144,7 +165,8 @@ function NewEntry({ accounts, costCenters }: { accounts: Account[]; costCenters:
     setError(null);
     const usable = lines.filter((l) => l.accountId && Number(l.amount) > 0);
     if (usable.length < 2) return setError("Add at least two lines with an account and amount.");
-    if (!totals.balanced) return setError(`Debits (₹${totals.dr}) must equal credits (₹${totals.cr}).`);
+    if (!totals.balanced)
+      return setError(`Debits (₹${totals.dr}) must equal credits (₹${totals.cr}).`);
     setPending(true);
     try {
       const r = await createManualEntryFn({
@@ -171,7 +193,13 @@ function NewEntry({ accounts, costCenters }: { accounts: Account[]; costCenters:
   }
 
   return (
-    <Dialog open={open} onOpenChange={(n) => { setOpen(n); if (!n) reset(); }}>
+    <Dialog
+      open={open}
+      onOpenChange={(n) => {
+        setOpen(n);
+        if (!n) reset();
+      }}
+    >
       <DialogTrigger asChild>
         <Button size="sm" className="bg-gradient-brand text-white">
           <Plus className="mr-1.5 h-4 w-4" />
@@ -182,58 +210,148 @@ function NewEntry({ accounts, costCenters }: { accounts: Account[]; costCenters:
         <form onSubmit={submit}>
           <DialogHeader>
             <DialogTitle>New journal entry</DialogTitle>
-            <DialogDescription>A manual double-entry posting. Debits must equal credits.</DialogDescription>
+            <DialogDescription>
+              A manual double-entry posting. Debits must equal credits.
+            </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2"><Label>Date</Label><Input type="date" value={date} onChange={(e) => setDate(e.target.value)} required /></div>
-              <div className="grid gap-2"><Label>Memo</Label><Input value={memo} onChange={(e) => setMemo(e.target.value)} placeholder="What is this for?" /></div>
+              <div className="grid gap-2">
+                <Label>Date</Label>
+                <Input
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label>Memo</Label>
+                <Input
+                  value={memo}
+                  onChange={(e) => setMemo(e.target.value)}
+                  placeholder="What is this for?"
+                />
+              </div>
             </div>
             <div className="space-y-2">
               <Label>Lines</Label>
               {lines.map((line, i) => (
-                <div key={i} className="grid grid-cols-[1.6fr_5.5rem_6rem_1.4fr_2rem] items-center gap-2">
+                <div
+                  key={i}
+                  className="grid grid-cols-[1.6fr_5.5rem_6rem_1.4fr_2rem] items-center gap-2"
+                >
                   <Select value={line.accountId} onValueChange={(v) => update(i, { accountId: v })}>
-                    <SelectTrigger className="h-9"><SelectValue placeholder="Account" /></SelectTrigger>
+                    <SelectTrigger className="h-9">
+                      <SelectValue placeholder="Account" />
+                    </SelectTrigger>
                     <SelectContent>
-                      {postable.map((a) => <SelectItem key={a.id} value={a.id}>{a.code} · {a.name}</SelectItem>)}
+                      {postable.map((a) => (
+                        <SelectItem key={a.id} value={a.id}>
+                          {a.code} · {a.name}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
-                  <Select value={line.side} onValueChange={(v) => update(i, { side: v as "debit" | "credit" })}>
-                    <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                  <Select
+                    value={line.side}
+                    onValueChange={(v) => update(i, { side: v as "debit" | "credit" })}
+                  >
+                    <SelectTrigger className="h-9">
+                      <SelectValue />
+                    </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="debit">Debit</SelectItem>
                       <SelectItem value="credit">Credit</SelectItem>
                     </SelectContent>
                   </Select>
-                  <Input type="number" min="0" step="any" placeholder="₹" value={line.amount} onChange={(e) => update(i, { amount: e.target.value })} />
-                  <Select value={line.costCenterId} onValueChange={(v) => update(i, { costCenterId: v })}>
-                    <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="any"
+                    placeholder="₹"
+                    value={line.amount}
+                    onChange={(e) => update(i, { amount: e.target.value })}
+                  />
+                  <Select
+                    value={line.costCenterId}
+                    onValueChange={(v) => update(i, { costCenterId: v })}
+                  >
+                    <SelectTrigger className="h-9">
+                      <SelectValue />
+                    </SelectTrigger>
                     <SelectContent>
                       <SelectItem value={NO_CC}>No cost centre</SelectItem>
-                      {costCenters.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                      {costCenters.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.name}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
-                  <Button type="button" variant="ghost" size="icon" className="h-9 w-8" disabled={lines.length <= 2} onClick={() => setLines((p) => p.filter((_, j) => j !== i))}>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-9 w-8"
+                    disabled={lines.length <= 2}
+                    onClick={() => setLines((p) => p.filter((_, j) => j !== i))}
+                  >
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
               ))}
-              <Button type="button" variant="outline" size="sm" onClick={() => setLines((p) => [...p, emptyLine()])}>
-                <Plus className="mr-1.5 h-4 w-4" />Add line
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setLines((p) => [...p, emptyLine()])}
+              >
+                <Plus className="mr-1.5 h-4 w-4" />
+                Add line
               </Button>
             </div>
             <div className="flex items-center justify-between rounded-md bg-muted/40 px-3 py-2 text-sm">
-              <span className="text-muted-foreground">Debits ₹{totals.dr.toLocaleString("en-IN")} · Credits ₹{totals.cr.toLocaleString("en-IN")}</span>
-              <Badge variant="outline" className={totals.balanced ? "border-success/20 bg-success/10 text-success" : "border-destructive/20 bg-destructive/10 text-destructive"}>
+              <span className="text-muted-foreground">
+                Debits ₹{totals.dr.toLocaleString("en-IN")} · Credits ₹
+                {totals.cr.toLocaleString("en-IN")}
+              </span>
+              <Badge
+                variant="outline"
+                className={
+                  totals.balanced
+                    ? "border-success/20 bg-success/10 text-success"
+                    : "border-destructive/20 bg-destructive/10 text-destructive"
+                }
+              >
                 {totals.balanced ? "Balanced" : "Out of balance"}
               </Badge>
             </div>
           </div>
-          {error ? <p role="alert" className="mb-2 text-sm text-destructive">{error}</p> : null}
+          {error ? (
+            <p role="alert" className="mb-2 text-sm text-destructive">
+              {error}
+            </p>
+          ) : null}
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={pending}>Cancel</Button>
-            <Button type="submit" disabled={pending || !totals.balanced}>{pending ? <><Loader2 className="mr-2 size-4 animate-spin" />Posting…</> : "Post entry"}</Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setOpen(false)}
+              disabled={pending}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={pending || !totals.balanced}>
+              {pending ? (
+                <>
+                  <Loader2 className="mr-2 size-4 animate-spin" />
+                  Posting…
+                </>
+              ) : (
+                "Post entry"
+              )}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

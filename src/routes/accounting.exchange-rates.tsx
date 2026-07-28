@@ -5,7 +5,14 @@ import { toast } from "sonner";
 
 import { PageHeader } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -57,7 +64,9 @@ function ExchangeRatesPage() {
                 rates.map((r) => (
                   <TableRow key={r.id} className="hover:bg-muted/40">
                     <TableCell className="font-medium">{r.currencyCode}</TableCell>
-                    <TableCell className="text-right tabular-nums">₹{Number(r.rateToBase).toFixed(4)}</TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      ₹{Number(r.rateToBase).toFixed(4)}
+                    </TableCell>
                     <TableCell className="text-muted-foreground">{r.asOfDate}</TableCell>
                   </TableRow>
                 ))
@@ -86,7 +95,9 @@ function NewRate() {
     if (!(Number(rate) > 0)) return setError("Enter a positive rate.");
     setPending(true);
     try {
-      await upsertExchangeRateFn({ data: { currencyCode: ccy.trim().toUpperCase(), rateToBase: rate, asOfDate: date } });
+      await upsertExchangeRateFn({
+        data: { currencyCode: ccy.trim().toUpperCase(), rateToBase: rate, asOfDate: date },
+      });
       setOpen(false);
       setCcy("");
       setRate("");
@@ -116,22 +127,58 @@ function NewRate() {
           <div className="grid grid-cols-3 gap-4 py-4">
             <div className="grid gap-2">
               <Label htmlFor="fx-ccy">Currency</Label>
-              <Input id="fx-ccy" value={ccy} onChange={(e) => setCcy(e.target.value)} placeholder="USD" maxLength={3} />
+              <Input
+                id="fx-ccy"
+                value={ccy}
+                onChange={(e) => setCcy(e.target.value)}
+                placeholder="USD"
+                maxLength={3}
+              />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="fx-rate">Rate (₹)</Label>
-              <Input id="fx-rate" type="number" step="any" value={rate} onChange={(e) => setRate(e.target.value)} placeholder="83.50" />
+              <Input
+                id="fx-rate"
+                type="number"
+                step="any"
+                value={rate}
+                onChange={(e) => setRate(e.target.value)}
+                placeholder="83.50"
+              />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="fx-date">As of</Label>
-              <Input id="fx-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+              <Input
+                id="fx-date"
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+              />
             </div>
           </div>
-          {error ? <p role="alert" className="mb-2 text-sm text-destructive">{error}</p> : null}
+          {error ? (
+            <p role="alert" className="mb-2 text-sm text-destructive">
+              {error}
+            </p>
+          ) : null}
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={pending}>Cancel</Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setOpen(false)}
+              disabled={pending}
+            >
+              Cancel
+            </Button>
             <Button type="submit" disabled={pending}>
-              {pending ? <><Loader2 className="mr-2 size-4 animate-spin" />Saving…</> : "Save rate"}
+              {pending ? (
+                <>
+                  <Loader2 className="mr-2 size-4 animate-spin" />
+                  Saving…
+                </>
+              ) : (
+                "Save rate"
+              )}
             </Button>
           </DialogFooter>
         </form>

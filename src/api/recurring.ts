@@ -70,6 +70,10 @@ export const createRecurringTemplateFn = createServerFn({ method: "POST" })
 
 export const generateDueInvoicesFn = createServerFn({ method: "POST" }).handler(async () => {
   const p = await requirePermission("ledger:post");
-  const r = await generateDueInvoices({ orgId: p.orgId, asOf: new Date().toISOString().slice(0, 10), userId: p.userId });
+  const r = await generateDueInvoices({
+    orgId: p.orgId,
+    asOf: new Date().toISOString().slice(0, 10),
+    userId: p.userId,
+  });
   return { generated: r.generated, invoiceNumbers: r.invoiceNumbers };
 });

@@ -12,7 +12,14 @@
 import { and, eq } from "drizzle-orm";
 import { withOrg } from "@/db/client";
 import { accounts, contraVouchers } from "@/db/schema";
-import { LedgerError, claimNextNumber, credit, debit, postJournalEntry, writeAudit } from "./ledger";
+import {
+  LedgerError,
+  claimNextNumber,
+  credit,
+  debit,
+  postJournalEntry,
+  writeAudit,
+} from "./ledger";
 
 export type RecordContraInput = {
   orgId: string;
@@ -32,7 +39,10 @@ export async function recordContra(
   input: RecordContraInput,
 ): Promise<{ contraId: string; voucherNumber: string; entryId: string }> {
   if (input.amountMinor <= 0n) {
-    throw new LedgerError(`Transfer amount must be positive, got ${input.amountMinor}.`, "NON_POSITIVE_AMOUNT");
+    throw new LedgerError(
+      `Transfer amount must be positive, got ${input.amountMinor}.`,
+      "NON_POSITIVE_AMOUNT",
+    );
   }
   if (input.fromAccountId === input.toAccountId) {
     throw new LedgerError("A contra transfer needs two different accounts.", "SAME_ACCOUNT");
@@ -46,7 +56,8 @@ export async function recordContra(
     const byId = new Map(ends.map((a) => [a.id, a]));
     for (const id of [input.fromAccountId, input.toAccountId]) {
       const a = byId.get(id);
-      if (!a) throw new LedgerError(`Account ${id} not found in this organization.`, "ACCOUNT_NOT_FOUND");
+      if (!a)
+        throw new LedgerError(`Account ${id} not found in this organization.`, "ACCOUNT_NOT_FOUND");
       if (a.subtype !== "cash_and_bank") {
         throw new LedgerError(
           `Contra transfers move money between cash/bank accounts; ${a.name} is not one.`,

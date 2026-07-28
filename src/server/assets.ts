@@ -67,20 +67,29 @@ export async function createFixedAsset(input: {
   userId?: string | null;
 }): Promise<{ fixedAssetId: string }> {
   if (input.costMinor <= 0n) throw new LedgerError("Asset cost must be positive.", "INVALID_COST");
-  if (input.usefulLifeMonths <= 0) throw new LedgerError("Useful life must be positive.", "INVALID_LIFE");
+  if (input.usefulLifeMonths <= 0)
+    throw new LedgerError("Useful life must be positive.", "INVALID_LIFE");
 
   return withOrg(input.orgId, async (tx) => {
     const firstBySubtype = async (subtype: "accumulated_depreciation" | "depreciation_expense") => {
       const [a] = await tx
         .select({ id: accounts.id })
         .from(accounts)
-        .where(and(eq(accounts.orgId, input.orgId), eq(accounts.subtype, subtype), eq(accounts.isGroup, false)))
+        .where(
+          and(
+            eq(accounts.orgId, input.orgId),
+            eq(accounts.subtype, subtype),
+            eq(accounts.isGroup, false),
+          ),
+        )
         .limit(1);
       if (!a) throw new LedgerError(`No ${subtype} account in the chart.`, "ACCOUNT_MISSING");
       return a.id;
     };
-    const accumulatedAccountId = input.accumulatedAccountId ?? (await firstBySubtype("accumulated_depreciation"));
-    const depreciationAccountId = input.depreciationAccountId ?? (await firstBySubtype("depreciation_expense"));
+    const accumulatedAccountId =
+      input.accumulatedAccountId ?? (await firstBySubtype("accumulated_depreciation"));
+    const depreciationAccountId =
+      input.depreciationAccountId ?? (await firstBySubtype("depreciation_expense"));
     let acquisitionJe: string | null = null;
     if (input.fundingAccountId) {
       const entry = await postJournalEntry(
@@ -144,7 +153,12 @@ export async function runDepreciation(args: {
   orgId: string;
   throughDate: string; // any date in the last month to charge
   userId?: string | null;
-}): Promise<{ entryId: string | null; entryNumber: string | null; chargedMinor: bigint; monthsPosted: number }> {
+}): Promise<{
+  entryId: string | null;
+  entryNumber: string | null;
+  chargedMinor: bigint;
+  monthsPosted: number;
+}> {
   return withOrg(args.orgId, async (tx) => {
     const assets = await tx
       .select()
@@ -180,8 +194,14 @@ export async function runDepreciation(args: {
         if (amount <= 0n) break;
         accumulated += amount;
         total += amount;
-        postings.set(`dr:${a.depreciationAccountId}`, (postings.get(`dr:${a.depreciationAccountId}`) ?? 0n) + amount);
-        postings.set(`cr:${a.accumulatedAccountId}`, (postings.get(`cr:${a.accumulatedAccountId}`) ?? 0n) + amount);
+        postings.set(
+          `dr:${a.depreciationAccountId}`,
+          (postings.get(`dr:${a.depreciationAccountId}`) ?? 0n) + amount,
+        );
+        postings.set(
+          `cr:${a.accumulatedAccountId}`,
+          (postings.get(`cr:${a.accumulatedAccountId}`) ?? 0n) + amount,
+        );
         toRecord.push({ assetId: a.id, period, amount });
       }
     }
@@ -193,7 +213,11 @@ export async function runDepreciation(args: {
     const lines: PostingLine[] = [];
     for (const [key, amt] of postings) {
       const [side, acct] = key.split(":");
-      lines.push(side === "dr" ? debit(acct, amt, { memo: "Depreciation" }) : credit(acct, amt, { memo: "Accumulated depreciation" }));
+      lines.push(
+        side === "dr"
+          ? debit(acct, amt, { memo: "Depreciation" })
+          : credit(acct, amt, { memo: "Accumulated depreciation" }),
+      );
     }
 
     const entry = await postJournalEntry(
@@ -209,10 +233,21 @@ export async function runDepreciation(args: {
     );
 
     await tx.insert(depreciationEntries).values(
-      toRecord.map((r) => ({ orgId: args.orgId, fixedAssetId: r.assetId, periodDate: r.period, amountMinor: r.amount, journalEntryId: entry.entryId })),
+      toRecord.map((r) => ({
+        orgId: args.orgId,
+        fixedAssetId: r.assetId,
+        periodDate: r.period,
+        amountMinor: r.amount,
+        journalEntryId: entry.entryId,
+      })),
     );
 
-    return { entryId: entry.entryId, entryNumber: entry.entryNumber, chargedMinor: total, monthsPosted: toRecord.length };
+    return {
+      entryId: entry.entryId,
+      entryNumber: entry.entryNumber,
+      chargedMinor: total,
+      monthsPosted: toRecord.length,
+    };
   });
 }
 
@@ -240,7 +275,8 @@ export async function disposeFixedAsset(args: {
       .from(fixedAssets)
       .where(and(eq(fixedAssets.id, args.fixedAssetId), eq(fixedAssets.orgId, args.orgId)));
     if (!asset) throw new LedgerError("Fixed asset not found.", "ASSET_NOT_FOUND");
-    if (asset.status === "disposed") throw new LedgerError(`${asset.code} is already disposed.`, "ALREADY_DISPOSED");
+    if (asset.status === "disposed")
+      throw new LedgerError(`${asset.code} is already disposed.`, "ALREADY_DISPOSED");
     if (args.proceedsMinor > 0n && !args.proceedsAccountId) {
       throw new LedgerError("Choose where the proceeds are received.", "NO_PROCEEDS_ACCOUNT");
     }
@@ -252,11 +288,19 @@ export async function disposeFixedAsset(args: {
     const nbv = asset.costMinor - accumulated;
     const gainLoss = args.proceedsMinor - nbv; // >0 gain, <0 loss
 
-    const lines: PostingLine[] = [credit(asset.assetAccountId, asset.costMinor, { memo: `Dispose ${asset.code}` })];
-    if (accumulated > 0n) lines.push(debit(asset.accumulatedAccountId, accumulated, { memo: "Remove accumulated depreciation" }));
-    if (args.proceedsMinor > 0n) lines.push(debit(args.proceedsAccountId!, args.proceedsMinor, { memo: "Sale proceeds" }));
-    if (gainLoss > 0n) lines.push(credit(args.gainLossAccountId, gainLoss, { memo: "Gain on disposal" }));
-    else if (gainLoss < 0n) lines.push(debit(args.gainLossAccountId, -gainLoss, { memo: "Loss on disposal" }));
+    const lines: PostingLine[] = [
+      credit(asset.assetAccountId, asset.costMinor, { memo: `Dispose ${asset.code}` }),
+    ];
+    if (accumulated > 0n)
+      lines.push(
+        debit(asset.accumulatedAccountId, accumulated, { memo: "Remove accumulated depreciation" }),
+      );
+    if (args.proceedsMinor > 0n)
+      lines.push(debit(args.proceedsAccountId!, args.proceedsMinor, { memo: "Sale proceeds" }));
+    if (gainLoss > 0n)
+      lines.push(credit(args.gainLossAccountId, gainLoss, { memo: "Gain on disposal" }));
+    else if (gainLoss < 0n)
+      lines.push(debit(args.gainLossAccountId, -gainLoss, { memo: "Loss on disposal" }));
 
     const entry = await postJournalEntry(
       {
@@ -313,8 +357,15 @@ export async function getAssetRegister(tx: DbOrTx, orgId: string): Promise<Asset
     where fa.org_id = ${orgId}
     order by fa.code
   `)) as unknown as Array<{
-    id: string; code: string; name: string; acq: string;
-    cost_minor: string; salvage_value_minor: string; useful_life_months: number; status: string; accumulated: string;
+    id: string;
+    code: string;
+    name: string;
+    acq: string;
+    cost_minor: string;
+    salvage_value_minor: string;
+    useful_life_months: number;
+    status: string;
+    accumulated: string;
   }>;
 
   return rows.map((r) => {

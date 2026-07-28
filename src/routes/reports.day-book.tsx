@@ -2,7 +2,14 @@ import { createFileRoute } from "@tanstack/react-router";
 import { PageHeader } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { fetchDayBook } from "@/api/index";
 import { formatMinor } from "@/lib/money";
 
@@ -59,8 +66,12 @@ function DayBook() {
                       <Badge variant="outline">{sourceLabel[r.source] ?? r.source}</Badge>
                     </TableCell>
                     <TableCell className="text-muted-foreground">{r.reference ?? "—"}</TableCell>
-                    <TableCell className="max-w-xs truncate text-muted-foreground">{r.memo ?? "—"}</TableCell>
-                    <TableCell className="text-right font-medium tabular-nums">{formatMinor(r.amount)}</TableCell>
+                    <TableCell className="max-w-xs truncate text-muted-foreground">
+                      {r.memo ?? "—"}
+                    </TableCell>
+                    <TableCell className="text-right font-medium tabular-nums">
+                      {formatMinor(r.amount)}
+                    </TableCell>
                   </TableRow>
                 ))
               )}

@@ -13,7 +13,13 @@ import {
 export const NO_ITEM = "__none__";
 export const NO_TAX = "__none__";
 
-export type Item = { id: string; name: string; sku?: string | null; salePrice?: string | null; purchasePrice?: string | null };
+export type Item = {
+  id: string;
+  name: string;
+  sku?: string | null;
+  salePrice?: string | null;
+  purchasePrice?: string | null;
+};
 export type TaxRate = { id: string; name: string; ratePercent: number };
 
 export type LineDraft = {
@@ -141,7 +147,12 @@ export function LinesEditor({
           </Button>
         </div>
       ))}
-      <Button type="button" variant="outline" size="sm" onClick={() => setLines((prev) => [...prev, emptyLine()])}>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={() => setLines((prev) => [...prev, emptyLine()])}
+      >
         <Plus className="mr-1.5 h-4 w-4" />
         Add line
       </Button>

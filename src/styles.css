@@ -121,17 +121,29 @@
 }
 
 @layer base {
-  * { border-color: var(--color-border); }
+  * {
+    border-color: var(--color-border);
+  }
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
     font-feature-settings: "cv11", "ss01";
   }
-  .tabular-nums { font-variant-numeric: tabular-nums; }
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
 }
 
-@utility bg-gradient-brand { background-image: var(--gradient-brand); }
-@utility bg-gradient-gold { background-image: var(--gradient-gold); }
-@utility shadow-elegant { box-shadow: var(--shadow-elegant); }
-@utility shadow-glow { box-shadow: var(--shadow-glow); }
+@utility bg-gradient-brand {
+  background-image: var(--gradient-brand);
+}
+@utility bg-gradient-gold {
+  background-image: var(--gradient-gold);
+}
+@utility shadow-elegant {
+  box-shadow: var(--shadow-elegant);
+}
+@utility shadow-glow {
+  box-shadow: var(--shadow-glow);
+}

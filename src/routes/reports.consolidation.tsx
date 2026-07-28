@@ -1,7 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { PageHeader } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { fetchConsolidation } from "@/api/period";
 import { formatMinor, formatMinorSigned } from "@/lib/money";
 
@@ -36,10 +43,16 @@ function Consolidation() {
                 <TableRow key={e.name} className="hover:bg-muted/40">
                   <TableCell className="font-medium">{e.name}</TableCell>
                   <TableCell className="text-right tabular-nums">{formatMinor(e.assets)}</TableCell>
-                  <TableCell className="text-right tabular-nums">{formatMinor(e.liabilities)}</TableCell>
+                  <TableCell className="text-right tabular-nums">
+                    {formatMinor(e.liabilities)}
+                  </TableCell>
                   <TableCell className="text-right tabular-nums">{formatMinor(e.equity)}</TableCell>
-                  <TableCell className="text-right tabular-nums">{formatMinor(e.revenue)}</TableCell>
-                  <TableCell className={`text-right font-medium tabular-nums ${BigInt(e.netProfit) < 0n ? "text-destructive" : "text-success"}`}>
+                  <TableCell className="text-right tabular-nums">
+                    {formatMinor(e.revenue)}
+                  </TableCell>
+                  <TableCell
+                    className={`text-right font-medium tabular-nums ${BigInt(e.netProfit) < 0n ? "text-destructive" : "text-success"}`}
+                  >
                     {formatMinorSigned(e.netProfit)}
                   </TableCell>
                 </TableRow>
@@ -48,11 +61,21 @@ function Consolidation() {
             <tfoot>
               <TableRow className="border-t-2 font-semibold">
                 <TableCell>Consolidated</TableCell>
-                <TableCell className="text-right tabular-nums">{formatMinor(c.consolidated.assets)}</TableCell>
-                <TableCell className="text-right tabular-nums">{formatMinor(c.consolidated.liabilities)}</TableCell>
-                <TableCell className="text-right tabular-nums">{formatMinor(c.consolidated.equity)}</TableCell>
-                <TableCell className="text-right tabular-nums">{formatMinor(c.consolidated.revenue)}</TableCell>
-                <TableCell className="text-right tabular-nums">{formatMinorSigned(c.consolidated.netProfit)}</TableCell>
+                <TableCell className="text-right tabular-nums">
+                  {formatMinor(c.consolidated.assets)}
+                </TableCell>
+                <TableCell className="text-right tabular-nums">
+                  {formatMinor(c.consolidated.liabilities)}
+                </TableCell>
+                <TableCell className="text-right tabular-nums">
+                  {formatMinor(c.consolidated.equity)}
+                </TableCell>
+                <TableCell className="text-right tabular-nums">
+                  {formatMinor(c.consolidated.revenue)}
+                </TableCell>
+                <TableCell className="text-right tabular-nums">
+                  {formatMinorSigned(c.consolidated.netProfit)}
+                </TableCell>
               </TableRow>
             </tfoot>
           </Table>

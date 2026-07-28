@@ -13,7 +13,15 @@
 
 import { eq, and, sql } from "drizzle-orm";
 import { db, pgClient, withOrg } from "./client";
-import { accounts, contacts, invoices, items, journalEntries, organizations, users } from "./schema";
+import {
+  accounts,
+  contacts,
+  invoices,
+  items,
+  journalEntries,
+  organizations,
+  users,
+} from "./schema";
 import { SEEDED_ORG_NAME } from "./fixtures";
 import {
   LedgerError,
@@ -50,7 +58,12 @@ import {
 } from "@/server/receipts";
 import { getStockSummary, getStockValuationTotal, recordOpeningStock } from "@/server/inventory";
 import { getForexExposure, postForexRevaluation } from "@/server/forex";
-import { createFixedAsset, runDepreciation, disposeFixedAsset, getAssetRegister } from "@/server/assets";
+import {
+  createFixedAsset,
+  runDepreciation,
+  disposeFixedAsset,
+  getAssetRegister,
+} from "@/server/assets";
 import { closePeriod, reopenPeriod } from "@/server/period";
 import { getProfitAndLoss } from "@/server/reports";
 import { createRecurringTemplate, generateDueInvoices } from "@/server/recurring";
@@ -563,7 +576,9 @@ async function main() {
       billDate: "2026-07-21",
       dueDate: "2026-08-20",
       userId: user.id,
-      lines: [{ itemId: widget.id, description: "WA widgets", quantity: "10", unitPriceMinor: 200_00n }],
+      lines: [
+        { itemId: widget.id, description: "WA widgets", quantity: "10", unitPriceMinor: 200_00n },
+      ],
     });
     await postBill({ orgId: org.id, billId: b.billId, userId: user.id });
   });
@@ -588,7 +603,13 @@ async function main() {
     dueDate: "2026-08-21",
     userId: user.id,
     lines: [
-      { itemId: widget.id, description: "WA widget sale", quantity: "5", unitPriceMinor: 500_00n, revenueAccountId: acct("4100") },
+      {
+        itemId: widget.id,
+        description: "WA widget sale",
+        quantity: "5",
+        unitPriceMinor: 500_00n,
+        revenueAccountId: acct("4100"),
+      },
     ],
   });
   await expectResolve("posting an item sale (books COGS + relieves stock)", () =>
@@ -620,7 +641,13 @@ async function main() {
     dueDate: "2026-08-22",
     userId: user.id,
     lines: [
-      { itemId: widget.id, description: "oversell", quantity: "1000", unitPriceMinor: 500_00n, revenueAccountId: acct("4100") },
+      {
+        itemId: widget.id,
+        description: "oversell",
+        quantity: "1000",
+        unitPriceMinor: 500_00n,
+        revenueAccountId: acct("4100"),
+      },
     ],
   });
   await expectReject("overselling stock rejected", "NEGATIVE_STOCK", () =>
@@ -629,7 +656,12 @@ async function main() {
 
   // Voiding the sale returns the goods to stock at the cost they left.
   await expectResolve("voiding an item sale restocks", () =>
-    voidInvoice({ orgId: org.id, invoiceId: waSale.invoiceId, reason: "test restock", userId: user.id }),
+    voidInvoice({
+      orgId: org.id,
+      invoiceId: waSale.invoiceId,
+      reason: "test restock",
+      userId: user.id,
+    }),
   );
   {
     const s = await stockValueOf(widget.id);
@@ -662,7 +694,13 @@ async function main() {
     dueDate: "2026-08-23",
     userId: user.id,
     lines: [
-      { itemId: service.id, description: "Consulting", quantity: "3", unitPriceMinor: 2_000_00n, revenueAccountId: acct("4200") },
+      {
+        itemId: service.id,
+        description: "Consulting",
+        quantity: "3",
+        unitPriceMinor: 2_000_00n,
+        revenueAccountId: acct("4200"),
+      },
     ],
   });
   await postInvoice({ orgId: org.id, invoiceId: svcSale.invoiceId, userId: user.id });
@@ -709,7 +747,14 @@ async function main() {
       billDate: "2026-07-21",
       dueDate: "2026-08-20",
       userId: user.id,
-      lines: [{ itemId: fifoItem.id, description: "FIFO layer 2", quantity: "10", unitPriceMinor: 200_00n }],
+      lines: [
+        {
+          itemId: fifoItem.id,
+          description: "FIFO layer 2",
+          quantity: "10",
+          unitPriceMinor: 200_00n,
+        },
+      ],
     });
     await postBill({ orgId: org.id, billId: b.billId, userId: user.id });
   }
@@ -723,7 +768,15 @@ async function main() {
     invoiceDate: "2026-07-22",
     dueDate: "2026-08-21",
     userId: user.id,
-    lines: [{ itemId: fifoItem.id, description: "FIFO sale", quantity: "15", unitPriceMinor: 500_00n, revenueAccountId: acct("4100") }],
+    lines: [
+      {
+        itemId: fifoItem.id,
+        description: "FIFO sale",
+        quantity: "15",
+        unitPriceMinor: 500_00n,
+        revenueAccountId: acct("4100"),
+      },
+    ],
   });
   await postInvoice({ orgId: org.id, invoiceId: fifoSale.invoiceId, userId: user.id });
   assert(
@@ -764,7 +817,15 @@ async function main() {
     invoiceDate: "2026-07-25",
     dueDate: "2026-08-24",
     userId: user.id,
-    lines: [{ itemId: widget.id, description: "widget sale for return", quantity: "4", unitPriceMinor: 500_00n, revenueAccountId: acct("4100") }],
+    lines: [
+      {
+        itemId: widget.id,
+        description: "widget sale for return",
+        quantity: "4",
+        unitPriceMinor: 500_00n,
+        revenueAccountId: acct("4100"),
+      },
+    ],
   });
   await postInvoice({ orgId: org.id, invoiceId: cnSale.invoiceId, userId: user.id });
 
@@ -779,7 +840,14 @@ async function main() {
     relatedInvoiceId: cnSale.invoiceId,
     creditNoteDate: "2026-07-26",
     userId: user.id,
-    lines: [{ itemId: widget.id, description: "returned widgets", quantity: "2", unitPriceMinor: 500_00n }],
+    lines: [
+      {
+        itemId: widget.id,
+        description: "returned widgets",
+        quantity: "2",
+        unitPriceMinor: 500_00n,
+      },
+    ],
   });
   await expectResolve("posting a credit note (sales return)", () =>
     postCreditNote({ orgId: org.id, creditNoteId: cn.creditNoteId, userId: user.id }),
@@ -813,7 +881,9 @@ async function main() {
     relatedInvoiceId: cnSale.invoiceId,
     creditNoteDate: "2026-07-26",
     userId: user.id,
-    lines: [{ itemId: widget.id, description: "over-credit", quantity: "100", unitPriceMinor: 500_00n }],
+    lines: [
+      { itemId: widget.id, description: "over-credit", quantity: "100", unitPriceMinor: 500_00n },
+    ],
   });
   await expectReject("over-crediting an invoice rejected", "CREDIT_EXCEEDS_BALANCE", () =>
     postCreditNote({ orgId: org.id, creditNoteId: cnOver.creditNoteId, userId: user.id }),
@@ -826,7 +896,14 @@ async function main() {
     billDate: "2026-07-27",
     dueDate: "2026-08-26",
     userId: user.id,
-    lines: [{ itemId: widget.id, description: "widgets to return", quantity: "4", unitPriceMinor: 200_00n }],
+    lines: [
+      {
+        itemId: widget.id,
+        description: "widgets to return",
+        quantity: "4",
+        unitPriceMinor: 200_00n,
+      },
+    ],
   });
   await postBill({ orgId: org.id, billId: dnBill.billId, userId: user.id });
 
@@ -839,7 +916,14 @@ async function main() {
     relatedBillId: dnBill.billId,
     debitNoteDate: "2026-07-28",
     userId: user.id,
-    lines: [{ itemId: widget.id, description: "returned to vendor", quantity: "2", unitPriceMinor: 200_00n }],
+    lines: [
+      {
+        itemId: widget.id,
+        description: "returned to vendor",
+        quantity: "2",
+        unitPriceMinor: 200_00n,
+      },
+    ],
   });
   await expectResolve("posting a debit note (purchase return)", () =>
     postDebitNote({ orgId: org.id, debitNoteId: dn.debitNoteId, userId: user.id }),
@@ -887,15 +971,28 @@ async function main() {
   );
   assert(
     "contra moved ₹50,000 between the two banks",
-    (await acctBal("1110")) - hdfcBefore === -50_000_00n && (await acctBal("1111")) - iciciBefore === 50_000_00n,
+    (await acctBal("1110")) - hdfcBefore === -50_000_00n &&
+      (await acctBal("1111")) - iciciBefore === 50_000_00n,
     "HDFC −₹50,000, ICICI +₹50,000",
     `HDFC ${inr((await acctBal("1110")) - hdfcBefore)}, ICICI ${inr((await acctBal("1111")) - iciciBefore)}`,
   );
   await expectReject("contra to the same account rejected", "SAME_ACCOUNT", () =>
-    recordContra({ orgId: org.id, fromAccountId: acct("1110"), toAccountId: acct("1110"), amountMinor: 1_00n, voucherDate: "2026-07-29" }),
+    recordContra({
+      orgId: org.id,
+      fromAccountId: acct("1110"),
+      toAccountId: acct("1110"),
+      amountMinor: 1_00n,
+      voucherDate: "2026-07-29",
+    }),
   );
   await expectReject("contra into a non-cash account rejected", "NOT_CASH_ACCOUNT", () =>
-    recordContra({ orgId: org.id, fromAccountId: acct("1110"), toAccountId: acct("4100"), amountMinor: 1_00n, voucherDate: "2026-07-29" }),
+    recordContra({
+      orgId: org.id,
+      fromAccountId: acct("1110"),
+      toAccountId: acct("4100"),
+      amountMinor: 1_00n,
+      voucherDate: "2026-07-29",
+    }),
   );
 
   // Sales order → invoice (auto-posted), relieving stock.
@@ -905,7 +1002,15 @@ async function main() {
     contactId: customer.id,
     orderDate: "2026-07-29",
     userId: user.id,
-    lines: [{ itemId: widget.id, description: "widget order", quantity: "3", unitPriceMinor: 500_00n, accountId: acct("4100") }],
+    lines: [
+      {
+        itemId: widget.id,
+        description: "widget order",
+        quantity: "3",
+        unitPriceMinor: 500_00n,
+        accountId: acct("4100"),
+      },
+    ],
   });
   let soInvoiceId = "";
   await expectResolve("converting a sales order to a posted invoice", async () => {
@@ -927,8 +1032,16 @@ async function main() {
       `${widgetBeforeSO.qty} → ${after.qty}`,
     );
   }
-  await expectReject("re-converting an invoiced sales order rejected", "ORDER_NOT_CONVERTIBLE", () =>
-    convertSalesOrderToInvoice({ orgId: org.id, salesOrderId: so.salesOrderId, invoiceDate: "2026-07-30", userId: user.id }),
+  await expectReject(
+    "re-converting an invoiced sales order rejected",
+    "ORDER_NOT_CONVERTIBLE",
+    () =>
+      convertSalesOrderToInvoice({
+        orgId: org.id,
+        salesOrderId: so.salesOrderId,
+        invoiceDate: "2026-07-30",
+        userId: user.id,
+      }),
   );
 
   // Purchase order → bill (auto-posted), receiving stock.
@@ -938,10 +1051,18 @@ async function main() {
     contactId: vendor.id,
     orderDate: "2026-07-29",
     userId: user.id,
-    lines: [{ itemId: widget.id, description: "widget restock", quantity: "5", unitPriceMinor: 200_00n }],
+    lines: [
+      { itemId: widget.id, description: "widget restock", quantity: "5", unitPriceMinor: 200_00n },
+    ],
   });
   await expectResolve("converting a purchase order to a posted bill", () =>
-    convertPurchaseOrderToBill({ orgId: org.id, purchaseOrderId: po.purchaseOrderId, billDate: "2026-07-30", autoPost: true, userId: user.id }),
+    convertPurchaseOrderToBill({
+      orgId: org.id,
+      purchaseOrderId: po.purchaseOrderId,
+      billDate: "2026-07-30",
+      autoPost: true,
+      userId: user.id,
+    }),
   );
   {
     const after = await stockValueOf(widget.id);
@@ -965,7 +1086,9 @@ async function main() {
     contactId: vendor.id,
     receiptDate: "2026-07-31",
     userId: user.id,
-    lines: [{ itemId: widget.id, description: "widgets received", quantity: "6", unitCostMinor: 200_00n }],
+    lines: [
+      { itemId: widget.id, description: "widgets received", quantity: "6", unitCostMinor: 200_00n },
+    ],
   });
   await expectResolve("posting a goods receipt (stock in, GRNI up)", () =>
     postGoodsReceipt({ orgId: org.id, goodsReceiptId: grn.goodsReceiptId, userId: user.id }),
@@ -988,7 +1111,13 @@ async function main() {
 
   // Bill the GRN: Dr GRNI / Cr A/P — GRNI must return to where it started.
   await expectResolve("billing the goods receipt (clears GRNI, records A/P)", () =>
-    convertGoodsReceiptToBill({ orgId: org.id, goodsReceiptId: grn.goodsReceiptId, billDate: "2026-08-01", autoPost: true, userId: user.id }),
+    convertGoodsReceiptToBill({
+      orgId: org.id,
+      goodsReceiptId: grn.goodsReceiptId,
+      billDate: "2026-08-01",
+      autoPost: true,
+      userId: user.id,
+    }),
   );
   assert(
     "billing the GRN cleared GRNI back to zero",
@@ -1005,7 +1134,15 @@ async function main() {
     contactId: customer.id,
     deliveryDate: "2026-08-02",
     userId: user.id,
-    lines: [{ itemId: widget.id, description: "widgets dispatched", quantity: "3", unitPriceMinor: 500_00n, revenueAccountId: acct("4100") }],
+    lines: [
+      {
+        itemId: widget.id,
+        description: "widgets dispatched",
+        quantity: "3",
+        unitPriceMinor: 500_00n,
+        revenueAccountId: acct("4100"),
+      },
+    ],
   });
   await expectResolve("posting a delivery note (stock out, COGS booked)", () =>
     postDeliveryNote({ orgId: org.id, deliveryNoteId: del.deliveryNoteId, userId: user.id }),
@@ -1030,7 +1167,13 @@ async function main() {
   // Invoice the delivery: revenue only, no second stock relief or COGS.
   const stockBeforeInv = await stockValueOf(widget.id);
   await expectResolve("invoicing the delivery (revenue only)", () =>
-    convertDeliveryToInvoice({ orgId: org.id, deliveryNoteId: del.deliveryNoteId, invoiceDate: "2026-08-03", autoPost: true, userId: user.id }),
+    convertDeliveryToInvoice({
+      orgId: org.id,
+      deliveryNoteId: del.deliveryNoteId,
+      invoiceDate: "2026-08-03",
+      autoPost: true,
+      userId: user.id,
+    }),
   );
   assert(
     "invoicing the delivery did NOT relieve stock again",
@@ -1052,13 +1195,27 @@ async function main() {
     invoiceDate: "2026-08-05",
     dueDate: "2026-09-04",
     userId: user.id,
-    lines: [{ description: "Over-limit sale", quantity: "1", unitPriceMinor: 10_000_00n, revenueAccountId: acct("4200") }],
+    lines: [
+      {
+        description: "Over-limit sale",
+        quantity: "1",
+        unitPriceMinor: 10_000_00n,
+        revenueAccountId: acct("4200"),
+      },
+    ],
   });
-  await expectReject("posting past a customer's credit limit rejected", "CREDIT_LIMIT_EXCEEDED", () =>
-    postInvoice({ orgId: org.id, invoiceId: overLimit.invoiceId, userId: user.id }),
+  await expectReject(
+    "posting past a customer's credit limit rejected",
+    "CREDIT_LIMIT_EXCEEDED",
+    () => postInvoice({ orgId: org.id, invoiceId: overLimit.invoiceId, userId: user.id }),
   );
   await expectResolve("an accountant can override the credit limit", () =>
-    postInvoice({ orgId: org.id, invoiceId: overLimit.invoiceId, userId: user.id, allowCreditOverride: true }),
+    postInvoice({
+      orgId: org.id,
+      invoiceId: overLimit.invoiceId,
+      userId: user.id,
+      allowCreditOverride: true,
+    }),
   );
   // Restore, so later assertions aren't affected.
   await db.update(contacts).set({ creditLimitMinor: null }).where(eq(contacts.id, customer.id));
@@ -1140,7 +1297,11 @@ async function main() {
   }
 
   // Re-running the same period must add nothing.
-  const rerun = await runDepreciation({ orgId: org.id, throughDate: "2026-06-01", userId: user.id });
+  const rerun = await runDepreciation({
+    orgId: org.id,
+    throughDate: "2026-06-01",
+    userId: user.id,
+  });
   assert(
     "re-running depreciation is idempotent",
     rerun.monthsPosted === 0,
@@ -1187,11 +1348,16 @@ async function main() {
   const reBefore = await reBalance();
   const pnl = await getProfitAndLoss(db, org.id, "2026-01-01", "2026-12-31");
 
-  const closeResult = await closePeriod({ orgId: org.id, throughDate: "2026-12-31", userId: user.id });
+  const closeResult = await closePeriod({
+    orgId: org.id,
+    throughDate: "2026-12-31",
+    userId: user.id,
+  });
   ok("closing the books through 2026-12-31");
   assert(
     "net profit rolled into Retained Earnings",
-    (await reBalance()) - reBefore === pnl.netProfitMinor && closeResult.netProfitMinor === pnl.netProfitMinor,
+    (await reBalance()) - reBefore === pnl.netProfitMinor &&
+      closeResult.netProfitMinor === pnl.netProfitMinor,
     inr((await reBalance()) - reBefore),
     `RE moved ${inr((await reBalance()) - reBefore)}, P&L net ${inr(pnl.netProfitMinor)}`,
   );
@@ -1239,7 +1405,14 @@ async function main() {
     startDate: "2026-05-01",
     autoPost: true,
     userId: user.id,
-    lines: [{ description: "Retainer", quantity: "1", unitPriceMinor: 10_000_00n, revenueAccountId: acct("4200") }],
+    lines: [
+      {
+        description: "Retainer",
+        quantity: "1",
+        unitPriceMinor: 10_000_00n,
+        revenueAccountId: acct("4200"),
+      },
+    ],
   });
 
   const gen = await generateDueInvoices({ orgId: org.id, asOf: "2026-07-15", userId: user.id });
@@ -1251,7 +1424,11 @@ async function main() {
     `${gen.generated} generated`,
   );
 
-  const rerunGen = await generateDueInvoices({ orgId: org.id, asOf: "2026-07-15", userId: user.id });
+  const rerunGen = await generateDueInvoices({
+    orgId: org.id,
+    asOf: "2026-07-15",
+    userId: user.id,
+  });
   assert(
     "re-running generates nothing new (next run is in the future)",
     rerunGen.generated === 0,

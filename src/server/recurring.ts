@@ -58,14 +58,16 @@ export async function createRecurringTemplate(input: {
   lines: RecurringLineInput[];
   userId?: string | null;
 }): Promise<{ templateId: string }> {
-  if (input.lines.length === 0) throw new LedgerError("A recurring template needs a line.", "NO_LINES");
+  if (input.lines.length === 0)
+    throw new LedgerError("A recurring template needs a line.", "NO_LINES");
 
   return withOrg(input.orgId, async (tx) => {
     const [customer] = await tx
       .select()
       .from(contacts)
       .where(and(eq(contacts.id, input.contactId), eq(contacts.orgId, input.orgId)));
-    if (!customer) throw new LedgerError(`Customer ${input.contactId} not found.`, "CONTACT_NOT_FOUND");
+    if (!customer)
+      throw new LedgerError(`Customer ${input.contactId} not found.`, "CONTACT_NOT_FOUND");
 
     const [tpl] = await tx
       .insert(recurringTemplates)
@@ -172,7 +174,12 @@ export async function generateDueInvoices(args: {
       await withOrg(args.orgId, (tx) =>
         tx
           .update(recurringTemplates)
-          .set({ nextRunDate: runDate, lastInvoiceId, status: ended ? "ended" : "active", updatedAt: new Date() })
+          .set({
+            nextRunDate: runDate,
+            lastInvoiceId,
+            status: ended ? "ended" : "active",
+            updatedAt: new Date(),
+          })
           .where(eq(recurringTemplates.id, tpl.id)),
       );
     }

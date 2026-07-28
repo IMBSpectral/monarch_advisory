@@ -27,7 +27,7 @@ Two checks, and they test different things.
 - the A/R control account equals the aging subledger
 - cached invoice payment totals match their allocations
 
-**`db:test`** (34 assertions) — the engine actively *rejects* bad input, which is
+**`db:test`** (34 assertions) — the engine actively _rejects_ bad input, which is
 the more important property. A ledger that only works when fed correct data isn't
 a safeguard. It covers: unbalanced and single-sided entries, posting to group
 headers / nonexistent / cross-tenant accounts, closed-period posting, sign
@@ -48,7 +48,7 @@ is ₹2,85,000.00. Floating-point money forces "close enough" comparisons, which
 how ledgers silently drift.
 
 **2. The journal is the only source of truth.** Invoices, bills and payments are
-*documents* — they describe intent. Every balance, statement and report is derived
+_documents_ — they describe intent. Every balance, statement and report is derived
 by aggregating `journal_lines`. There is deliberately no `balance` column on
 `accounts`. If the ledger says it, the report says it, and the two cannot disagree.
 
@@ -152,22 +152,22 @@ The seed creates one user per role plus an intentionally empty second tenant
 - **Bills** are posted directly to the ledger in the seed rather than through a
   bill service. `src/server/bills.ts` is the mirror of `invoicing.ts` and is the
   next service to write.
-**Row-level security — built.** Tenancy is no longer application convention.
+  **Row-level security — built.** Tenancy is no longer application convention.
 
 Every financial table (16 of them) has an RLS policy comparing `org_id` against a
 transaction-local `app.org_id`, set by `withOrg()` in `src/db/client.ts`. Both
 halves are covered: `USING` filters reads, `WITH CHECK` stops a caller writing a
-row *into* another tenant.
+row _into_ another tenant.
 
 Three properties make this worth the plumbing:
 
 1. **It fails closed.** `current_setting('app.org_id', true)` is NULL when unset,
    and `org_id = NULL` is never true — so a query that forgets its tenant scope
-   returns *zero* rows, not *all* rows. A missed wrapper is an empty screen you
+   returns _zero_ rows, not _all_ rows. A missed wrapper is an empty screen you
    find in minutes, not a leak you find in a breach report.
 2. **The app can't bypass it.** Postgres exempts superusers unconditionally and
    owners unless `FORCE` is set. The app connects as `monarch_app`, an ordinary
-   role that owns nothing; `FORCE` is on. Migrations and seeds use a *separate*
+   role that owns nothing; `FORCE` is on. Migrations and seeds use a _separate_
    `DATABASE_ADMIN_URL`, so bypassing tenancy takes a different connection string
    an operator must choose.
 3. **The audit log is append-only in the database.** `UPDATE` and `DELETE` are
@@ -175,7 +175,7 @@ Three properties make this worth the plumbing:
    guarantee rather than a convention.
 
 **Identity tables are deliberately exempt:** `users`, `sessions`, `memberships`,
-`organizations`. Reading them is *how* `app.org_id` gets decided, so gating them
+`organizations`. Reading them is _how_ `app.org_id` gets decided, so gating them
 on it is circular — migration 0002 tried it for `organizations` and broke login
 outright, which migration 0003 undoes with the reasoning written down. These
 carry no financial data, and the rule replacing RLS for them is small enough to

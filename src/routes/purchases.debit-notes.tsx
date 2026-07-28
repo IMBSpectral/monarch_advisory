@@ -5,7 +5,14 @@ import { toast } from "sonner";
 
 import { PageHeader } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,7 +26,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useCan } from "@/components/SessionContext";
 import { fetchDebitNotes, createDebitNoteFn } from "@/api/vouchers";
 import { fetchBills } from "@/api/bills";
@@ -56,7 +69,9 @@ function DebitNotes() {
       <PageHeader
         title="Debit Notes"
         subtitle="Purchase returns and allowances"
-        actions={canPost ? <NewDebitNote bills={bills} items={items} taxRates={taxRates} /> : undefined}
+        actions={
+          canPost ? <NewDebitNote bills={bills} items={items} taxRates={taxRates} /> : undefined
+        }
       />
       <div className="p-6">
         <Card>
@@ -85,7 +100,9 @@ function DebitNotes() {
                     <TableCell>{n.name}</TableCell>
                     <TableCell className="text-muted-foreground">{n.date}</TableCell>
                     <TableCell className="text-muted-foreground">{n.reason ?? "—"}</TableCell>
-                    <TableCell className="text-right font-medium tabular-nums">{formatMinor(n.total)}</TableCell>
+                    <TableCell className="text-right font-medium tabular-nums">
+                      {formatMinor(n.total)}
+                    </TableCell>
                     <TableCell>
                       <Badge variant="outline" className={noteStatusStyle[n.status] ?? ""}>
                         {noteStatusLabel[n.status] ?? n.status}
@@ -102,9 +119,23 @@ function DebitNotes() {
   );
 }
 
-type Bill = { id: string; billNumber: string; vendorName: string; contactId: string; balance: string };
+type Bill = {
+  id: string;
+  billNumber: string;
+  vendorName: string;
+  contactId: string;
+  balance: string;
+};
 
-function NewDebitNote({ bills, items, taxRates }: { bills: Bill[]; items: any[]; taxRates: any[] }) {
+function NewDebitNote({
+  bills,
+  items,
+  taxRates,
+}: {
+  bills: Bill[];
+  items: any[];
+  taxRates: any[];
+}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
@@ -154,7 +185,13 @@ function NewDebitNote({ bills, items, taxRates }: { bills: Bill[]; items: any[];
   }
 
   return (
-    <Dialog open={open} onOpenChange={(n) => { setOpen(n); if (!n) reset(); }}>
+    <Dialog
+      open={open}
+      onOpenChange={(n) => {
+        setOpen(n);
+        if (!n) reset();
+      }}
+    >
       <DialogTrigger asChild>
         <Button size="sm" className="bg-gradient-brand text-white">
           <Plus className="mr-1.5 h-4 w-4" />
@@ -174,7 +211,9 @@ function NewDebitNote({ bills, items, taxRates }: { bills: Bill[]; items: any[];
               <div className="grid gap-2">
                 <Label>Against bill</Label>
                 <Select value={billId} onValueChange={setBillId}>
-                  <SelectTrigger><SelectValue placeholder="Choose bill" /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose bill" />
+                  </SelectTrigger>
                   <SelectContent>
                     {bills.map((b) => (
                       <SelectItem key={b.id} value={b.id}>
@@ -186,20 +225,55 @@ function NewDebitNote({ bills, items, taxRates }: { bills: Bill[]; items: any[];
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="dn-date">Date</Label>
-                <Input id="dn-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
+                <Input
+                  id="dn-date"
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  required
+                />
               </div>
             </div>
             <div className="grid gap-2">
               <Label htmlFor="dn-reason">Reason</Label>
-              <Input id="dn-reason" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="e.g. defective units" />
+              <Input
+                id="dn-reason"
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                placeholder="e.g. defective units"
+              />
             </div>
-            <LinesEditor lines={lines} setLines={setLines} items={items} taxRates={taxRates} priceField="purchasePrice" />
+            <LinesEditor
+              lines={lines}
+              setLines={setLines}
+              items={items}
+              taxRates={taxRates}
+              priceField="purchasePrice"
+            />
           </div>
-          {error ? <p role="alert" className="mb-2 text-sm text-destructive">{error}</p> : null}
+          {error ? (
+            <p role="alert" className="mb-2 text-sm text-destructive">
+              {error}
+            </p>
+          ) : null}
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={pending}>Cancel</Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setOpen(false)}
+              disabled={pending}
+            >
+              Cancel
+            </Button>
             <Button type="submit" disabled={pending}>
-              {pending ? <><Loader2 className="mr-2 size-4 animate-spin" />Posting…</> : "Post debit note"}
+              {pending ? (
+                <>
+                  <Loader2 className="mr-2 size-4 animate-spin" />
+                  Posting…
+                </>
+              ) : (
+                "Post debit note"
+              )}
             </Button>
           </DialogFooter>
         </form>

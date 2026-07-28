@@ -135,7 +135,12 @@ async function itemMethod(tx: DbOrTx, orgId: string, itemId: string): Promise<st
 type FifoLayer = { id: string; remainingScaled: bigint; remainingValueMinor: bigint };
 
 /** Lock and load a FIFO item's remaining layers, oldest first. */
-async function lockFifoLayers(tx: DbOrTx, orgId: string, itemId: string, warehouseId: string): Promise<FifoLayer[]> {
+async function lockFifoLayers(
+  tx: DbOrTx,
+  orgId: string,
+  itemId: string,
+  warehouseId: string,
+): Promise<FifoLayer[]> {
   const rows = (await tx.execute(sql`
     select id, remaining_qty, remaining_value_minor
     from stock_layers
@@ -143,7 +148,11 @@ async function lockFifoLayers(tx: DbOrTx, orgId: string, itemId: string, warehou
     order by received_at, created_at
     for update
   `)) as unknown as Array<{ id: string; remaining_qty: string; remaining_value_minor: string }>;
-  return rows.map((r) => ({ id: r.id, remainingScaled: toScaledQty(r.remaining_qty), remainingValueMinor: BigInt(r.remaining_value_minor) }));
+  return rows.map((r) => ({
+    id: r.id,
+    remainingScaled: toScaledQty(r.remaining_qty),
+    remainingValueMinor: BigInt(r.remaining_value_minor),
+  }));
 }
 
 async function writeLevel(
@@ -251,7 +260,10 @@ export type ReceiveInput = {
 export async function receiveStock(tx: DbOrTx, input: ReceiveInput): Promise<void> {
   const qtyScaled = toScaledQty(input.quantity);
   if (qtyScaled <= 0n) {
-    throw new LedgerError(`Receipt quantity must be positive, got "${input.quantity}".`, "INVALID_QUANTITY");
+    throw new LedgerError(
+      `Receipt quantity must be positive, got "${input.quantity}".`,
+      "INVALID_QUANTITY",
+    );
   }
   const unitCost = mulDivRound(input.valueMinor, QTY_SCALE, qtyScaled);
   await postMovement(tx, {
@@ -333,7 +345,10 @@ export async function planStockOut(
   for (const req of requests) {
     const qtyScaled = toScaledQty(req.quantity);
     if (qtyScaled <= 0n) {
-      throw new LedgerError(`Issue quantity must be positive, got "${req.quantity}".`, "INVALID_QUANTITY");
+      throw new LedgerError(
+        `Issue quantity must be positive, got "${req.quantity}".`,
+        "INVALID_QUANTITY",
+      );
     }
 
     const method = await itemMethod(tx, orgId, req.itemId);
@@ -366,10 +381,20 @@ export async function planStockOut(
         consume.push({ layerId: layer.id, qtyScaled: take, valueMinor: takeValue });
       }
       if (need > 0n) {
-        throw new LedgerError(`Insufficient stock for item ${req.itemId} (FIFO): short by ${fromScaledQty(need)}.`, "NEGATIVE_STOCK");
+        throw new LedgerError(
+          `Insufficient stock for item ${req.itemId} (FIFO): short by ${fromScaledQty(need)}.`,
+          "NEGATIVE_STOCK",
+        );
       }
       const unitCost = mulDivRound(value, QTY_SCALE, qtyScaled);
-      lines.push({ itemId: req.itemId, qtyScaled, valueMinor: value, unitCostMinor: unitCost, memo: req.memo, fifo: consume });
+      lines.push({
+        itemId: req.itemId,
+        qtyScaled,
+        valueMinor: value,
+        unitCostMinor: unitCost,
+        memo: req.memo,
+        fifo: consume,
+      });
       total += value;
       continue;
     }
@@ -389,8 +414,17 @@ export async function planStockOut(
     }
     const issueValue = mulDivRound(level.valueMinor, qtyScaled, level.qtyScaled);
     const unitCost = mulDivRound(issueValue, QTY_SCALE, qtyScaled);
-    running.set(req.itemId, { qtyScaled: level.qtyScaled - qtyScaled, valueMinor: level.valueMinor - issueValue });
-    lines.push({ itemId: req.itemId, qtyScaled, valueMinor: issueValue, unitCostMinor: unitCost, memo: req.memo });
+    running.set(req.itemId, {
+      qtyScaled: level.qtyScaled - qtyScaled,
+      valueMinor: level.valueMinor - issueValue,
+    });
+    lines.push({
+      itemId: req.itemId,
+      qtyScaled,
+      valueMinor: issueValue,
+      unitCostMinor: unitCost,
+      memo: req.memo,
+    });
     total += issueValue;
   }
 
@@ -530,7 +564,10 @@ export async function recordOpeningStock(input: {
     const valued = input.lines.map((l) => {
       const qtyScaled = toScaledQty(l.quantity);
       if (qtyScaled <= 0n) {
-        throw new LedgerError(`Opening stock quantity must be positive for item ${l.itemId}.`, "INVALID_QUANTITY");
+        throw new LedgerError(
+          `Opening stock quantity must be positive for item ${l.itemId}.`,
+          "INVALID_QUANTITY",
+        );
       }
       const valueMinor = mulDivRound(l.unitCostMinor, qtyScaled, QTY_SCALE);
       return { ...l, valueMinor };
@@ -607,7 +644,13 @@ export async function getStockSummary(tx: DbOrTx, orgId: string): Promise<StockS
     where i.org_id = ${orgId} and i.is_inventory_tracked = true
     group by i.id, i.sku, i.name
     order by i.name
-  `)) as unknown as Array<{ item_id: string; sku: string | null; name: string; on_hand_qty: string; value_minor: string }>;
+  `)) as unknown as Array<{
+    item_id: string;
+    sku: string | null;
+    name: string;
+    on_hand_qty: string;
+    value_minor: string;
+  }>;
 
   return rows.map((r) => {
     const qtyScaled = toScaledQty(r.on_hand_qty);
@@ -658,14 +701,20 @@ export async function getCurrentAvgCost(
  * For FIFO items, Σ remaining layer value must equal Σ cached level value — the
  * layers and the running balance are two views of the same stock and can't drift.
  */
-export async function getFifoReconciliation(tx: DbOrTx, orgId: string): Promise<{ layerValueMinor: bigint; levelValueMinor: bigint }> {
+export async function getFifoReconciliation(
+  tx: DbOrTx,
+  orgId: string,
+): Promise<{ layerValueMinor: bigint; levelValueMinor: bigint }> {
   const rows = (await tx.execute(sql`
     with fifo_items as (select id from items where org_id = ${orgId} and valuation_method = 'fifo')
     select
       coalesce((select sum(remaining_value_minor) from stock_layers where org_id = ${orgId} and item_id in (select id from fifo_items)), 0) as layer_value,
       coalesce((select sum(value_minor) from item_stock_levels where org_id = ${orgId} and item_id in (select id from fifo_items)), 0) as level_value
   `)) as unknown as Array<{ layer_value: string; level_value: string }>;
-  return { layerValueMinor: BigInt(rows[0].layer_value), levelValueMinor: BigInt(rows[0].level_value) };
+  return {
+    layerValueMinor: BigInt(rows[0].layer_value),
+    levelValueMinor: BigInt(rows[0].level_value),
+  };
 }
 
 /** Total value of all stock on hand — must equal the Inventory account balance. */
@@ -694,5 +743,9 @@ export async function getTrackedItem(
     .where(and(eq(items.id, itemId), eq(items.orgId, orgId)))
     .limit(1);
   if (!item || !item.isInventoryTracked) return null;
-  return { id: item.id, inventoryAccountId: item.inventoryAccountId, cogsAccountId: item.cogsAccountId };
+  return {
+    id: item.id,
+    inventoryAccountId: item.inventoryAccountId,
+    cogsAccountId: item.cogsAccountId,
+  };
 }

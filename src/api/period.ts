@@ -27,7 +27,11 @@ export const closePeriodFn = createServerFn({ method: "POST" })
   .validator(z.object({ throughDate: z.string() }))
   .handler(async ({ data }) => {
     const p = await requirePermission("period:close");
-    const r = await closePeriod({ orgId: p.orgId, throughDate: data.throughDate, userId: p.userId });
+    const r = await closePeriod({
+      orgId: p.orgId,
+      throughDate: data.throughDate,
+      userId: p.userId,
+    });
     return { entryNumber: r.entryNumber, netProfit: r.netProfitMinor.toString() };
   });
 
@@ -54,7 +58,10 @@ export const fetchConsolidation = createServerFn({ method: "GET" }).handler(asyn
   // organizations IS under RLS, so its name is read inside each org's context.
   const { db } = await import("@/db/client");
   const orgIds = (
-    await db.select({ orgId: memberships.orgId }).from(memberships).where(eq(memberships.userId, userId))
+    await db
+      .select({ orgId: memberships.orgId })
+      .from(memberships)
+      .where(eq(memberships.userId, userId))
   ).map((r) => r.orgId);
 
   const entities: Array<{
@@ -67,7 +74,10 @@ export const fetchConsolidation = createServerFn({ method: "GET" }).handler(asyn
   }> = [];
   for (const orgId of orgIds) {
     const entity = await withOrg(orgId, async (tx) => {
-      const [org] = await tx.select({ name: organizations.name }).from(organizations).where(eq(organizations.id, orgId));
+      const [org] = await tx
+        .select({ name: organizations.name })
+        .from(organizations)
+        .where(eq(organizations.id, orgId));
       const bs = await getBalanceSheet(tx, orgId, per.to);
       const pnl = await getProfitAndLoss(tx, orgId, per.from, per.to);
       return {

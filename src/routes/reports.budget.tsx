@@ -1,7 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { PageHeader } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { fetchBudgetVsActual } from "@/api/dimensions";
 import { formatMinor, formatMinorSigned } from "@/lib/money";
 
@@ -46,9 +53,15 @@ function Budget() {
                   return (
                     <TableRow key={r.code} className="hover:bg-muted/40">
                       <TableCell className="font-medium">{r.name}</TableCell>
-                      <TableCell className="text-right tabular-nums">{formatMinor(r.budget)}</TableCell>
-                      <TableCell className="text-right tabular-nums">{formatMinor(r.actual)}</TableCell>
-                      <TableCell className={`text-right font-medium tabular-nums ${over ? "text-destructive" : "text-success"}`}>
+                      <TableCell className="text-right tabular-nums">
+                        {formatMinor(r.budget)}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {formatMinor(r.actual)}
+                      </TableCell>
+                      <TableCell
+                        className={`text-right font-medium tabular-nums ${over ? "text-destructive" : "text-success"}`}
+                      >
                         {formatMinorSigned(r.variance)}
                       </TableCell>
                       <TableCell>
@@ -59,7 +72,9 @@ function Budget() {
                               style={{ width: `${pct}%` }}
                             />
                           </div>
-                          <span className="w-10 text-right text-xs tabular-nums text-muted-foreground">{pct}%</span>
+                          <span className="w-10 text-right text-xs tabular-nums text-muted-foreground">
+                            {pct}%
+                          </span>
                         </div>
                       </TableCell>
                     </TableRow>

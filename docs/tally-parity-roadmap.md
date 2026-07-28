@@ -30,7 +30,7 @@ place; nothing moves stock yet.
    `invoicing.ts`: `createX()` (draft) → `postX()` (commit + JE) →
    `recordPayment/void/reverse`.
 3. **RLS on every financial table.** New tables get `org_id` + `FORCE ROW LEVEL
-   SECURITY` in the same migration, following migrations 0002/0003.
+SECURITY` in the same migration, following migrations 0002/0003.
 4. **Immutable + reverse, never edit.** Corrections use `reverseJournalEntry`,
    exactly as invoices do today.
 5. **Integer paise, `money()` columns, `claimNextNumber` for every document
@@ -54,7 +54,7 @@ Small enablers the later phases depend on.
 
 ---
 
-## Phase 1 — Inventory / Stock Ledger engine  ⭐ biggest (4–6 weeks)
+## Phase 1 — Inventory / Stock Ledger engine ⭐ biggest (4–6 weeks)
 
 The defining gap. Build a **perpetual stock ledger** parallel to the financial
 ledger.
@@ -63,7 +63,7 @@ ledger.
 
 - `stockMovements` — the stock analogue of `journalLines`:
   `(orgId, itemId, warehouseId, moveDate, qtyIn, qtyOut, rateMinor, valueMinor,
-  sourceType, sourceDocId, jeId)`. Immutable, RLS.
+sourceType, sourceDocId, jeId)`. Immutable, RLS.
 - `warehouses` (godowns) — back the existing UI screen with a real table.
 - `itemStockLevels` — materialized on-hand qty + value per (item, warehouse),
   rebuilt from movements (same pattern as cached balances, with a verify check).
@@ -113,14 +113,14 @@ account balance == Σ stock value" in `db:verify`.
 
 Complete Tally's voucher set. Each reuses the triad + `claimNextNumber`.
 
-| Voucher | Schema | Posting model | Notes |
-|---|---|---|---|
-| **Credit Note** (sales return) | `creditNotes` + lines | Reverse-direction of invoice: Dr Revenue+GST / Cr Receivables; stock-in if goods returned | Build on `reverseJournalEntry` semantics |
-| **Debit Note** (purchase return) | `debitNotes` + lines | Mirror for bills | |
-| **Contra** | reuse `journalEntries` w/ source=`contra` | Cash↔Bank / Bank↔Bank transfer, 2-line JE | Thin — mostly UI |
-| **Sales Order / Purchase Order** | `salesOrders`/`purchaseOrders` + lines | **No JE** (non-financial commitment) → converts to invoice/bill | Adds fulfilment status tracking |
-| **Delivery Note / GRN** | `deliveryNotes`/`goodsReceipts` | Stock movement only (no financial JE until invoice/bill) | Splits goods flow from money flow — core Tally behaviour |
-| **Quote/Estimate** | `quotes` | None → converts to SO/invoice | |
+| Voucher                          | Schema                                    | Posting model                                                                             | Notes                                                    |
+| -------------------------------- | ----------------------------------------- | ----------------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| **Credit Note** (sales return)   | `creditNotes` + lines                     | Reverse-direction of invoice: Dr Revenue+GST / Cr Receivables; stock-in if goods returned | Build on `reverseJournalEntry` semantics                 |
+| **Debit Note** (purchase return) | `debitNotes` + lines                      | Mirror for bills                                                                          |                                                          |
+| **Contra**                       | reuse `journalEntries` w/ source=`contra` | Cash↔Bank / Bank↔Bank transfer, 2-line JE                                                 | Thin — mostly UI                                         |
+| **Sales Order / Purchase Order** | `salesOrders`/`purchaseOrders` + lines    | **No JE** (non-financial commitment) → converts to invoice/bill                           | Adds fulfilment status tracking                          |
+| **Delivery Note / GRN**          | `deliveryNotes`/`goodsReceipts`           | Stock movement only (no financial JE until invoice/bill)                                  | Splits goods flow from money flow — core Tally behaviour |
+| **Quote/Estimate**               | `quotes`                                  | None → converts to SO/invoice                                                             |                                                          |
 
 **UI**: an "order → delivery → invoice" pipeline on Sales; "PO → GRN → bill" on
 Purchases, each showing conversion status.
@@ -160,14 +160,13 @@ account-ledger).
 
 > **STATUS (2026-07-22): core SHIPPED.** Cost centres & projects master tables
 > (mig 0008) with `getCostCenterPnl` + `/reports/cost-center-pnl` + `/accounting/
-> cost-centers` UI + a working manual-JE endpoint that tags them. Budgets (mig
-> 0009) with `getBudgetVsActual` + `/reports/budget`. Credit-limit enforcement in
+cost-centers` UI + a working manual-JE endpoint that tags them. Budgets (mig 0009) with `getBudgetVsActual` + `/reports/budget`. Credit-limit enforcement in
 > `postInvoice` (blocks when receivable + invoice > `contacts.creditLimitMinor`,
 > `allowCreditOverride` for accountants) with 2 tests. `db:test` = **74**,
 > `db:verify` 8/8. Verified live. **Remaining:** interest on overdue, per-voucher
 > dimension tagging in the sales/purchase dialogs, mandatory-CC enforcement.
 
-- **Cost centers / projects**: expose the *already-existing*
+- **Cost centers / projects**: expose the _already-existing_
   `costCenterId`/`projectId` on every voucher line UI; enforce optional/mandatory
   per account. Reports come free from Phase 3.
 - **Budgets**: `budgets` table (per account/cost-center/period) + budget-vs-actual
@@ -191,7 +190,7 @@ account-ledger).
 > net to a system `Forex Gain/Loss` account, source `fx_revaluation`); report +
 > post action at `/reports/forex`. `db:test` = **78** (+4), `db:verify` 8/8.
 > Verified live (USD revalued ₹83→₹86.5 = ₹35k gain, posted, exposure cleared).
-> **Remaining:** foreign-currency *invoices/bills* (needs AR/AP aging to convert,
+> **Remaining:** foreign-currency _invoices/bills_ (needs AR/AP aging to convert,
 > which risks the control==subledger invariant — deliberately deferred), realized
 > forex gain/loss on settlement, rate auto-fetch.
 
@@ -264,6 +263,7 @@ Depreciation **account types already exist**; add the engine.
 > **Deferred (external / infra):** payment-reminder emails, live bank feeds,
 > cheque printing, backup/restore, bulk import, third-party API — these need
 > external services or ops tooling out of app scope.
+
 - **Payment reminders**: scheduled job over AR-aging → email/notification (needs
   an email provider — external).
 - **Banking**: bank-statement **import** (CSV/OFX) into `bankTransactions`; cheque
@@ -289,18 +289,18 @@ Largest non-accounting module; only if targeting full Tally parity.
 
 ## Sequencing & effort summary
 
-| Phase | Feature | Effort | Depends on |
-|---|---|---|---|
-| 0 | Foundations (dimensions, UoM, series) | 1 wk | — |
-| 1 | **Inventory / stock ledger + COGS** | 4–6 wk | 0 |
-| 2 | Voucher & order lifecycle | 4–5 wk | 1 |
-| 3 | Reporting completion | 2–3 wk | 1, 2 |
-| 4 | Dimensions, budgets, credit control | 2–3 wk | 0, 3 |
-| 5 | Multi-currency | 2 wk | — |
-| 6 | Fixed assets / depreciation | 1–2 wk | — |
-| 7 | Period close & consolidation | 2 wk | 3 |
-| 8 | Automation, docs, banking, data ops | 3–4 wk | 2, 3 |
-| 9 | Payroll (optional) | 3–4 wk | 8 |
+| Phase | Feature                               | Effort | Depends on |
+| ----- | ------------------------------------- | ------ | ---------- |
+| 0     | Foundations (dimensions, UoM, series) | 1 wk   | —          |
+| 1     | **Inventory / stock ledger + COGS**   | 4–6 wk | 0          |
+| 2     | Voucher & order lifecycle             | 4–5 wk | 1          |
+| 3     | Reporting completion                  | 2–3 wk | 1, 2       |
+| 4     | Dimensions, budgets, credit control   | 2–3 wk | 0, 3       |
+| 5     | Multi-currency                        | 2 wk   | —          |
+| 6     | Fixed assets / depreciation           | 1–2 wk | —          |
+| 7     | Period close & consolidation          | 2 wk   | 3          |
+| 8     | Automation, docs, banking, data ops   | 3–4 wk | 2, 3       |
+| 9     | Payroll (optional)                    | 3–4 wk | 8          |
 
 **Roughly 5–7 months for one strong full-stack engineer** to reach broad Tally
 parity (excluding statutory compliance and live external feeds); ~half that with

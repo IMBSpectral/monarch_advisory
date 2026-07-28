@@ -1,7 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { PageHeader } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { fetchPayablesAging } from "@/api/index";
 import { formatMinor } from "@/lib/money";
 
@@ -46,8 +53,12 @@ function PayablesAging() {
                     <TableCell className="text-right tabular-nums">{cell(r.days1to30)}</TableCell>
                     <TableCell className="text-right tabular-nums">{cell(r.days31to60)}</TableCell>
                     <TableCell className="text-right tabular-nums">{cell(r.days61to90)}</TableCell>
-                    <TableCell className="text-right tabular-nums text-destructive">{cell(r.over90)}</TableCell>
-                    <TableCell className="text-right font-semibold tabular-nums">{formatMinor(r.total)}</TableCell>
+                    <TableCell className="text-right tabular-nums text-destructive">
+                      {cell(r.over90)}
+                    </TableCell>
+                    <TableCell className="text-right font-semibold tabular-nums">
+                      {formatMinor(r.total)}
+                    </TableCell>
                   </TableRow>
                 ))
               )}
@@ -56,12 +67,24 @@ function PayablesAging() {
               <tfoot>
                 <TableRow className="border-t-2">
                   <TableCell className="font-semibold">Total</TableCell>
-                  <TableCell className="text-right font-semibold tabular-nums">{cell(aging.totals.current)}</TableCell>
-                  <TableCell className="text-right font-semibold tabular-nums">{cell(aging.totals.days1to30)}</TableCell>
-                  <TableCell className="text-right font-semibold tabular-nums">{cell(aging.totals.days31to60)}</TableCell>
-                  <TableCell className="text-right font-semibold tabular-nums">{cell(aging.totals.days61to90)}</TableCell>
-                  <TableCell className="text-right font-semibold tabular-nums">{cell(aging.totals.over90)}</TableCell>
-                  <TableCell className="text-right font-semibold tabular-nums">{formatMinor(aging.totals.total)}</TableCell>
+                  <TableCell className="text-right font-semibold tabular-nums">
+                    {cell(aging.totals.current)}
+                  </TableCell>
+                  <TableCell className="text-right font-semibold tabular-nums">
+                    {cell(aging.totals.days1to30)}
+                  </TableCell>
+                  <TableCell className="text-right font-semibold tabular-nums">
+                    {cell(aging.totals.days31to60)}
+                  </TableCell>
+                  <TableCell className="text-right font-semibold tabular-nums">
+                    {cell(aging.totals.days61to90)}
+                  </TableCell>
+                  <TableCell className="text-right font-semibold tabular-nums">
+                    {cell(aging.totals.over90)}
+                  </TableCell>
+                  <TableCell className="text-right font-semibold tabular-nums">
+                    {formatMinor(aging.totals.total)}
+                  </TableCell>
                 </TableRow>
               </tfoot>
             ) : null}

@@ -21,11 +21,11 @@
    `SUM`. Positive quantity/value = **in**, negative = **out**. On-hand =
    `Σ quantity`; stock value = `Σ value_minor`.
 2. **Money still flows through `postJournalEntry` only.** Stock movements are
-   posted inside the *same DB transaction* as the JE they accompany, never on
+   posted inside the _same DB transaction_ as the JE they accompany, never on
    their own money path.
 3. **The reconciliation identity that must always hold:**
    `Σ value_minor over all inventory items  ==  balance of the Inventory control
-   account (subtype 'inventory')`. Enforced in `db:verify`.
+account (subtype 'inventory')`. Enforced in `db:verify`.
 4. **Cost is integer paise (bigint), quantity is `numeric(18,4)`** — matching the
    existing `invoice_lines.quantity`. Proportional (weighted-average) issue costs
    are rounded to the paise and the residue is carried, so the identity in (3)
@@ -35,12 +35,12 @@
 
 ## 0.1 Milestones (ship in this order)
 
-| # | Milestone | Contents |
-|---|---|---|
-| 1a | **Weighted-average core** | schema + migration, `postStockMovement`, WA valuation, purchase stock-in, sale COGS, void restock, `db:verify` identity |
-| 1b | **FIFO** | `stock_layers`, FIFO consume, per-item `valuation_method` |
-| 1c | **Manual vouchers** | opening stock, stock adjustment, stock transfer |
-| 1d | **Reports + UI** | stock summary / valuation / movement reports, Inventory screen columns, warehouse & adjustment/transfer UI |
+| #   | Milestone                 | Contents                                                                                                                |
+| --- | ------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| 1a  | **Weighted-average core** | schema + migration, `postStockMovement`, WA valuation, purchase stock-in, sale COGS, void restock, `db:verify` identity |
+| 1b  | **FIFO**                  | `stock_layers`, FIFO consume, per-item `valuation_method`                                                               |
+| 1c  | **Manual vouchers**       | opening stock, stock adjustment, stock transfer                                                                         |
+| 1d  | **Reports + UI**          | stock summary / valuation / movement reports, Inventory screen columns, warehouse & adjustment/transfer UI              |
 
 ---
 
@@ -55,15 +55,15 @@ export const valuationMethodEnum = pgEnum("valuation_method", [
 ]);
 
 export const stockMoveSourceEnum = pgEnum("stock_move_source", [
-  "purchase",          // bill post — goods in
-  "sale",              // invoice / POS post — goods out
-  "sales_return",      // credit note (Phase 2)
-  "purchase_return",   // debit note  (Phase 2)
-  "adjustment",        // manual write-up / write-down
-  "transfer_out",      // warehouse -> warehouse
+  "purchase", // bill post — goods in
+  "sale", // invoice / POS post — goods out
+  "sales_return", // credit note (Phase 2)
+  "purchase_return", // debit note  (Phase 2)
+  "adjustment", // manual write-up / write-down
+  "transfer_out", // warehouse -> warehouse
   "transfer_in",
-  "opening_balance",   // opening stock load
-  "reversal",          // restock from a void/reverse
+  "opening_balance", // opening stock load
+  "reversal", // restock from a void/reverse
 ]);
 ```
 
@@ -92,7 +92,9 @@ export const warehouses = pgTable(
   "warehouses",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    orgId: uuid("org_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+    orgId: uuid("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
     code: text("code").notNull(),
     name: text("name").notNull(),
     isDefault: boolean("is_default").notNull().default(false),
@@ -113,9 +115,15 @@ export const stockMovements = pgTable(
   "stock_movements",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    orgId: uuid("org_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
-    itemId: uuid("item_id").notNull().references(() => items.id),
-    warehouseId: uuid("warehouse_id").notNull().references(() => warehouses.id),
+    orgId: uuid("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    itemId: uuid("item_id")
+      .notNull()
+      .references(() => items.id),
+    warehouseId: uuid("warehouse_id")
+      .notNull()
+      .references(() => warehouses.id),
     moveDate: date("move_date").notNull(),
     /** Signed. + = received, - = issued. numeric to allow 2.5 kg etc. */
     quantity: numeric("quantity", { precision: 18, scale: 4 }).notNull(),
@@ -150,11 +158,19 @@ export const itemStockLevels = pgTable(
   "item_stock_levels",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    orgId: uuid("org_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
-    itemId: uuid("item_id").notNull().references(() => items.id),
-    warehouseId: uuid("warehouse_id").notNull().references(() => warehouses.id),
+    orgId: uuid("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    itemId: uuid("item_id")
+      .notNull()
+      .references(() => items.id),
+    warehouseId: uuid("warehouse_id")
+      .notNull()
+      .references(() => warehouses.id),
     onHandQty: numeric("on_hand_qty", { precision: 18, scale: 4 }).notNull().default("0"),
-    valueMinor: money("value_minor").notNull().default(sql`0`),
+    valueMinor: money("value_minor")
+      .notNull()
+      .default(sql`0`),
     ...timestamps,
   },
   (t) => [
@@ -171,9 +187,15 @@ export const stockLayers = pgTable(
   "stock_layers",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    orgId: uuid("org_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
-    itemId: uuid("item_id").notNull().references(() => items.id),
-    warehouseId: uuid("warehouse_id").notNull().references(() => warehouses.id),
+    orgId: uuid("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    itemId: uuid("item_id")
+      .notNull()
+      .references(() => items.id),
+    warehouseId: uuid("warehouse_id")
+      .notNull()
+      .references(() => warehouses.id),
     receivedAt: date("received_at").notNull(),
     originalQty: numeric("original_qty", { precision: 18, scale: 4 }).notNull(),
     remainingQty: numeric("remaining_qty", { precision: 18, scale: 4 }).notNull(),
@@ -260,8 +282,8 @@ export type StockMoveInput = {
   orgId: string;
   itemId: string;
   warehouseId: string;
-  moveDate: string;            // YYYY-MM-DD
-  quantity: string;           // signed decimal string, + in / - out
+  moveDate: string; // YYYY-MM-DD
+  quantity: string; // signed decimal string, + in / - out
   source: (typeof stockMovements.$inferInsert)["source"];
   sourceDocumentId?: string | null;
   jeId?: string | null;
@@ -269,13 +291,13 @@ export type StockMoveInput = {
   unitCostMinor?: bigint;
   userId?: string | null;
   memo?: string | null;
-  allowNegative?: boolean;    // default false
+  allowNegative?: boolean; // default false
 };
 
 export type StockMoveResult = {
   movementId: string;
-  valueMinor: bigint;         // signed base-currency value moved
-  unitCostMinor: bigint;      // absolute unit cost applied
+  valueMinor: bigint; // signed base-currency value moved
+  unitCostMinor: bigint; // absolute unit cost applied
 };
 ```
 
@@ -293,7 +315,7 @@ export async function postStockMovement(
   input: StockMoveInput,
   tx: DbOrTx,
 ): Promise<StockMoveResult> {
-  const qty = parseDecimal(input.quantity);              // -> {scaled: bigint, ...} at 4dp
+  const qty = parseDecimal(input.quantity); // -> {scaled: bigint, ...} at 4dp
   if (qty.isZero) throw new LedgerError("Zero-quantity stock move.", "STOCK_ZERO_QTY");
 
   const level = await lockLevel(tx, input.orgId, input.itemId, input.warehouseId); // SELECT … FOR UPDATE
@@ -304,7 +326,7 @@ export async function postStockMovement(
   if (qty.isPositive) {
     // Receipt.
     unitCostMinor = input.unitCostMinor ?? 0n;
-    valueMinor = mulQtyCost(qty, unitCostMinor);         // round to paise
+    valueMinor = mulQtyCost(qty, unitCostMinor); // round to paise
     // WA: fold into running value/qty. FIFO: also open a layer (§3.3).
   } else {
     // Issue. Value it from stock; never trust a passed-in cost.
@@ -316,18 +338,28 @@ export async function postStockMovement(
       );
     }
     ({ valueMinor, unitCostMinor } = await computeIssueValue(tx, input, level, outQty));
-    valueMinor = -valueMinor;                            // signed: issue reduces value
+    valueMinor = -valueMinor; // signed: issue reduces value
   }
 
-  const [move] = await tx.insert(stockMovements).values({
-    orgId: input.orgId, itemId: input.itemId, warehouseId: input.warehouseId,
-    moveDate: input.moveDate, quantity: input.quantity, valueMinor,
-    unitCostMinor, source: input.source,
-    sourceDocumentId: input.sourceDocumentId ?? null, jeId: input.jeId ?? null,
-    memo: input.memo ?? null, createdByUserId: input.userId ?? null,
-  }).returning({ id: stockMovements.id });
+  const [move] = await tx
+    .insert(stockMovements)
+    .values({
+      orgId: input.orgId,
+      itemId: input.itemId,
+      warehouseId: input.warehouseId,
+      moveDate: input.moveDate,
+      quantity: input.quantity,
+      valueMinor,
+      unitCostMinor,
+      source: input.source,
+      sourceDocumentId: input.sourceDocumentId ?? null,
+      jeId: input.jeId ?? null,
+      memo: input.memo ?? null,
+      createdByUserId: input.userId ?? null,
+    })
+    .returning({ id: stockMovements.id });
 
-  await bumpLevel(tx, level, qty, valueMinor);           // on_hand += qty; value += valueMinor
+  await bumpLevel(tx, level, qty, valueMinor); // on_hand += qty; value += valueMinor
 
   return { movementId: move.id, valueMinor, unitCostMinor };
 }
@@ -345,7 +377,7 @@ newQty     = Q - q
 unitCost   = issueValue / q         // reported only
 ```
 
-Because we subtract *exactly* `issueValue` (not `unitCost * q`), the cached value
+Because we subtract _exactly_ `issueValue` (not `unitCost * q`), the cached value
 never drifts from `Σ movements`, so the §0(3) identity is exact. Implement
 `round(V*q/Q)` on scaled-integer quantities:
 
@@ -354,7 +386,7 @@ never drifts from `Σ movements`, so the §0(3) identity is exact. Implement
 function mulDivRound(V: bigint, qScaled: bigint, QScaled: bigint): bigint {
   const num = V * qScaled;
   const half = QScaled / 2n;
-  return (num + half) / QScaled;    // round-half-up; QScaled > 0 guaranteed by lock
+  return (num + half) / QScaled; // round-half-up; QScaled > 0 guaranteed by lock
 }
 ```
 
@@ -388,18 +420,18 @@ stock-in instead:
 ```ts
 // inside postBill, replacing the single expenseByAccount loop:
 const debitByAccount = new Map<string, bigint>();
-const stockIns: Array<{ line: typeof lines[number]; item: Item }> = [];
+const stockIns: Array<{ line: (typeof lines)[number]; item: Item }> = [];
 
 for (const line of lines) {
   const item = line.itemId ? await getItem(tx, line.itemId) : null;
   if (item?.isInventoryTracked) {
-    const invAcct = item.inventoryAccountId
-      ?? (await resolveControlAccount(tx, args.orgId, "inventory"));
+    const invAcct =
+      item.inventoryAccountId ?? (await resolveControlAccount(tx, args.orgId, "inventory"));
     debitByAccount.set(invAcct, (debitByAccount.get(invAcct) ?? 0n) + line.lineTotalMinor);
     stockIns.push({ line, item });
   } else {
-    const acct = line.expenseAccountId
-      ?? (await resolveControlAccount(tx, args.orgId, "operating_expense"));
+    const acct =
+      line.expenseAccountId ?? (await resolveControlAccount(tx, args.orgId, "operating_expense"));
     debitByAccount.set(acct, (debitByAccount.get(acct) ?? 0n) + line.lineTotalMinor);
   }
 }
@@ -407,27 +439,35 @@ for (const line of lines) {
 
 // AFTER postJournalEntry returns `entry`, record the goods movements in the same tx:
 for (const { line, item } of stockIns) {
-  const qty = line.quantity;                              // decimal string, positive
+  const qty = line.quantity; // decimal string, positive
   const unitCost = divCostByQty(line.lineTotalMinor, qty); // paise per unit (excl. tax)
-  await postStockMovement({
-    orgId: args.orgId, itemId: item.id,
-    warehouseId: line.warehouseId ?? (await defaultWarehouseId(tx, args.orgId)),
-    moveDate: bill.billDate, quantity: qty, unitCostMinor: unitCost,
-    source: "purchase", sourceDocumentId: bill.id, jeId: entry.entryId,
-    userId: args.userId,
-  }, tx);
+  await postStockMovement(
+    {
+      orgId: args.orgId,
+      itemId: item.id,
+      warehouseId: line.warehouseId ?? (await defaultWarehouseId(tx, args.orgId)),
+      moveDate: bill.billDate,
+      quantity: qty,
+      unitCostMinor: unitCost,
+      source: "purchase",
+      sourceDocumentId: bill.id,
+      jeId: entry.entryId,
+      userId: args.userId,
+    },
+    tx,
+  );
 }
 ```
 
 The JE still balances (Dr Inventory/Expense + Dr Input tax = Cr AP) — only the
-*account* of the debit changed for tracked items. Stock value entering the ledger
+_account_ of the debit changed for tracked items. Stock value entering the ledger
 equals the Inventory debit, so the identity holds.
 
 ### 4.2 Sale (goods out + COGS) — `invoicing.postInvoice`
 
 Append a **COGS pair** to the same invoice JE (`invoicing.ts`, after the revenue
 & tax postings are built, before `postJournalEntry`). Cost comes from valuation,
-so it must be computed *before* posting the JE but *applied to stock* after —
+so it must be computed _before_ posting the JE but _applied to stock_ after —
 resolve by computing issue value first, then recording the movement with the
 returned `jeId`:
 
@@ -492,16 +532,26 @@ compensating stock movement so goods return to (or leave) stock:
 
 ```ts
 // in voidInvoice, after the reversing JE:
-const outs = await tx.select().from(stockMovements)
-  .where(and(eq(stockMovements.sourceDocumentId, invoice.id),
-             eq(stockMovements.source, "sale")));
+const outs = await tx
+  .select()
+  .from(stockMovements)
+  .where(and(eq(stockMovements.sourceDocumentId, invoice.id), eq(stockMovements.source, "sale")));
 for (const m of outs) {
-  await postStockMovement({
-    orgId, itemId: m.itemId, warehouseId: m.warehouseId,
-    moveDate: today, quantity: negate(m.quantity),   // was -5 → restock +5
-    unitCostMinor: m.unitCostMinor,                  // restore at the cost it left
-    source: "reversal", sourceDocumentId: invoice.id, jeId: reversingEntryId, userId,
-  }, tx);
+  await postStockMovement(
+    {
+      orgId,
+      itemId: m.itemId,
+      warehouseId: m.warehouseId,
+      moveDate: today,
+      quantity: negate(m.quantity), // was -5 → restock +5
+      unitCostMinor: m.unitCostMinor, // restore at the cost it left
+      source: "reversal",
+      sourceDocumentId: invoice.id,
+      jeId: reversingEntryId,
+      userId,
+    },
+    tx,
+  );
 }
 ```
 
@@ -546,6 +596,7 @@ CRUD, Stock Adjustment, Stock Transfer, and an item Stock-Ledger drill-down.
 ## 7. Tests & verification
 
 ### 7.1 `src/db/test-ledger.ts` — new rejection/behaviour cases
+
 - Issue more than on-hand → `NEGATIVE_STOCK` (with `allowNegative:false`).
 - WA: buy 10@100, buy 10@200, sell 5 → COGS 750 (avg 150), value left 2250. ✅
 - FIFO: same buys, sell 15 → COGS = 10×100 + 5×200 = 2000. ✅
@@ -554,6 +605,7 @@ CRUD, Stock Adjustment, Stock Transfer, and an item Stock-Ledger drill-down.
 - Service item (untracked) sale posts **no** stock movement and **no** COGS.
 
 ### 7.2 `src/db/verify.ts` — new integrity identities
+
 - `Σ stock_movements.value_minor (per item)` == `Σ item_stock_levels.value_minor`.
 - `Σ item_stock_levels.value_minor (all items)` == balance of the `inventory`
   control account. **This is the headline invariant.**
@@ -562,6 +614,7 @@ CRUD, Stock Adjustment, Stock Transfer, and an item Stock-Ledger drill-down.
 - Every `sale`/`purchase` movement has a non-null `jeId`.
 
 ### 7.3 Seed (`src/db/seed.ts`)
+
 - Create `Main Warehouse`; mark demo goods `isInventoryTracked`.
 - Load opening stock via `recordOpeningStock` (not direct inserts).
 - Existing seeded bills → now generate stock-in; seeded invoices → stock-out+COGS,

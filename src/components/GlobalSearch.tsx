@@ -154,14 +154,28 @@ export function GlobalSearch() {
             </div>
           ) : (
             <div className="max-h-[60vh] overflow-auto py-1">
-              <ResultGroup title="Invoices" hits={results.invoices} icon={FileText} onSelect={(id) => goto(() => navigate({ to: "/sales/invoices/$id", params: { id } }))} />
-              <ResultGroup title="Items" hits={results.items} icon={Package} onSelect={() => goto(() => navigate({ to: "/inventory" }))} />
+              <ResultGroup
+                title="Invoices"
+                hits={results.invoices}
+                icon={FileText}
+                onSelect={(id) =>
+                  goto(() => navigate({ to: "/sales/invoices/$id", params: { id } }))
+                }
+              />
+              <ResultGroup
+                title="Items"
+                hits={results.items}
+                icon={Package}
+                onSelect={() => goto(() => navigate({ to: "/inventory" }))}
+              />
               <ResultGroup
                 title="Customers & Vendors"
                 hits={results.contacts}
                 icon={Users}
                 onSelect={(_, sub) =>
-                  goto(() => navigate({ to: sub === "vendor" ? "/purchases/vendors" : "/sales/customers" }))
+                  goto(() =>
+                    navigate({ to: sub === "vendor" ? "/purchases/vendors" : "/sales/customers" }),
+                  )
                 }
               />
             </div>

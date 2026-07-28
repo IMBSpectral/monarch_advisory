@@ -72,7 +72,12 @@ export async function getForexExposure(
   const base = org?.baseCurrency ?? "INR";
 
   const fxAccounts = await tx
-    .select({ id: accounts.id, code: accounts.code, name: accounts.name, currency: accounts.currency })
+    .select({
+      id: accounts.id,
+      code: accounts.code,
+      name: accounts.name,
+      currency: accounts.currency,
+    })
     .from(accounts)
     .where(and(eq(accounts.orgId, orgId), isNotNull(accounts.currency)))
     .orderBy(accounts.code);
@@ -93,7 +98,8 @@ export async function getForexExposure(
     const foreignBalance = BigInt(balRows[0].fx_bal);
     const rate = await latestRate(tx, orgId, a.currency, base, asOf);
     // revalued base = foreign minor units × rate (minor→minor, so rate applies directly)
-    const revalued = rate === null ? baseCarrying : BigInt(Math.round(Number(foreignBalance) * rate));
+    const revalued =
+      rate === null ? baseCarrying : BigInt(Math.round(Number(foreignBalance) * rate));
     rows.push({
       accountId: a.id,
       code: a.code,
@@ -137,7 +143,12 @@ export async function postForexRevaluation(args: {
     for (const r of movers) {
       const d = r.unrealizedMinor;
       net += d;
-      const rest = { currency: r.currency, exchangeRate: String(r.rate ?? 1), originalAmountMinor: 0n, memo: `FX revaluation — ${r.code}` };
+      const rest = {
+        currency: r.currency,
+        exchangeRate: String(r.rate ?? 1),
+        originalAmountMinor: 0n,
+        memo: `FX revaluation — ${r.code}`,
+      };
       postings.push(d > 0n ? debit(r.accountId, d, rest) : credit(r.accountId, -d, rest));
     }
     // Offset the net into forex gain/loss. Net gain → credit income; net loss → debit.

@@ -5,7 +5,14 @@ import { toast } from "sonner";
 
 import { PageHeader } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,7 +25,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useCan } from "@/components/SessionContext";
 import { fetchContras, recordContraFn } from "@/api/vouchers";
 import { fetchDepositAccounts } from "@/api/index";
@@ -78,7 +91,9 @@ function Contra() {
                       </span>
                     </TableCell>
                     <TableCell className="text-muted-foreground">{c.memo ?? "—"}</TableCell>
-                    <TableCell className="text-right font-medium tabular-nums">{formatMinor(c.amount)}</TableCell>
+                    <TableCell className="text-right font-medium tabular-nums">
+                      {formatMinor(c.amount)}
+                    </TableCell>
                   </TableRow>
                 ))
               )}
@@ -103,7 +118,11 @@ function NewContra({ accounts }: { accounts: Account[] }) {
   const [memo, setMemo] = useState("");
 
   function reset() {
-    setFromId(""); setToId(""); setAmount(""); setMemo(""); setError(null);
+    setFromId("");
+    setToId("");
+    setAmount("");
+    setMemo("");
+    setError(null);
   }
 
   async function submit(e: FormEvent) {
@@ -135,7 +154,13 @@ function NewContra({ accounts }: { accounts: Account[] }) {
   }
 
   return (
-    <Dialog open={open} onOpenChange={(n) => { setOpen(n); if (!n) reset(); }}>
+    <Dialog
+      open={open}
+      onOpenChange={(n) => {
+        setOpen(n);
+        if (!n) reset();
+      }}
+    >
       <DialogTrigger asChild>
         <Button size="sm" className="bg-gradient-brand text-white">
           <Plus className="mr-1.5 h-4 w-4" />
@@ -153,18 +178,30 @@ function NewContra({ accounts }: { accounts: Account[] }) {
               <div className="grid gap-2">
                 <Label>From</Label>
                 <Select value={fromId} onValueChange={setFromId}>
-                  <SelectTrigger><SelectValue placeholder="Source" /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Source" />
+                  </SelectTrigger>
                   <SelectContent>
-                    {accounts.map((a) => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
+                    {accounts.map((a) => (
+                      <SelectItem key={a.id} value={a.id}>
+                        {a.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
               <div className="grid gap-2">
                 <Label>To</Label>
                 <Select value={toId} onValueChange={setToId}>
-                  <SelectTrigger><SelectValue placeholder="Destination" /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Destination" />
+                  </SelectTrigger>
                   <SelectContent>
-                    {accounts.map((a) => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
+                    {accounts.map((a) => (
+                      <SelectItem key={a.id} value={a.id}>
+                        {a.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -172,23 +209,60 @@ function NewContra({ accounts }: { accounts: Account[] }) {
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="ct-amt">Amount (₹)</Label>
-                <Input id="ct-amt" type="number" min="0" step="any" value={amount} onChange={(e) => setAmount(e.target.value)} required />
+                <Input
+                  id="ct-amt"
+                  type="number"
+                  min="0"
+                  step="any"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  required
+                />
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="ct-date">Date</Label>
-                <Input id="ct-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
+                <Input
+                  id="ct-date"
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  required
+                />
               </div>
             </div>
             <div className="grid gap-2">
               <Label htmlFor="ct-memo">Memo</Label>
-              <Input id="ct-memo" value={memo} onChange={(e) => setMemo(e.target.value)} placeholder="e.g. sweep to reserve" />
+              <Input
+                id="ct-memo"
+                value={memo}
+                onChange={(e) => setMemo(e.target.value)}
+                placeholder="e.g. sweep to reserve"
+              />
             </div>
           </div>
-          {error ? <p role="alert" className="mb-2 text-sm text-destructive">{error}</p> : null}
+          {error ? (
+            <p role="alert" className="mb-2 text-sm text-destructive">
+              {error}
+            </p>
+          ) : null}
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={pending}>Cancel</Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setOpen(false)}
+              disabled={pending}
+            >
+              Cancel
+            </Button>
             <Button type="submit" disabled={pending}>
-              {pending ? <><Loader2 className="mr-2 size-4 animate-spin" />Recording…</> : "Record transfer"}
+              {pending ? (
+                <>
+                  <Loader2 className="mr-2 size-4 animate-spin" />
+                  Recording…
+                </>
+              ) : (
+                "Record transfer"
+              )}
             </Button>
           </DialogFooter>
         </form>

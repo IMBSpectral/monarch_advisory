@@ -103,7 +103,10 @@ export const fetchBankTransactionsFor = createServerFn({ method: "GET" })
         .from(bankTransactions)
         .where(
           data?.bankAccountId
-            ? and(eq(bankTransactions.orgId, orgId), eq(bankTransactions.bankAccountId, data.bankAccountId))
+            ? and(
+                eq(bankTransactions.orgId, orgId),
+                eq(bankTransactions.bankAccountId, data.bankAccountId),
+              )
             : eq(bankTransactions.orgId, orgId),
         )
         .orderBy(desc(bankTransactions.transactionDate))

@@ -48,7 +48,10 @@ type OrderLine = {
 async function totalsFor(tx: DbOrTx, orgId: string, lines: OrderLine[]) {
   const ids = [...new Set(lines.map((l) => l.taxRateId).filter(Boolean))] as string[];
   const rates = ids.length
-    ? await tx.select().from(taxRates).where(and(eq(taxRates.orgId, orgId), inArray(taxRates.id, ids)))
+    ? await tx
+        .select()
+        .from(taxRates)
+        .where(and(eq(taxRates.orgId, orgId), inArray(taxRates.id, ids)))
     : [];
   const rateById = new Map(rates.map((r) => [r.id, r]));
 
@@ -56,7 +59,11 @@ async function totalsFor(tx: DbOrTx, orgId: string, lines: OrderLine[]) {
   let tax = 0n;
   for (const l of lines) {
     const qtyScaled = BigInt(Math.round(Number(l.quantity ?? "1") * 10_000));
-    if (qtyScaled <= 0n) throw new LedgerError(`Line "${l.description}" quantity must be positive.`, "INVALID_QUANTITY");
+    if (qtyScaled <= 0n)
+      throw new LedgerError(
+        `Line "${l.description}" quantity must be positive.`,
+        "INVALID_QUANTITY",
+      );
     const gross = mulDivRound(l.unitPriceMinor, qtyScaled, 10_000n);
     const net = gross - mulDivRound(gross, BigInt(l.discountBps ?? 0), 10_000n);
     const rateBps = l.taxRateId ? (rateById.get(l.taxRateId)?.rateBps ?? 0) : 0;
@@ -85,14 +92,16 @@ export type CreateSalesOrderInput = {
 export async function createSalesOrder(
   input: CreateSalesOrderInput,
 ): Promise<{ salesOrderId: string; orderNumber: string; totalMinor: bigint }> {
-  if (input.lines.length === 0) throw new LedgerError("A sales order needs at least one line.", "NO_LINES");
+  if (input.lines.length === 0)
+    throw new LedgerError("A sales order needs at least one line.", "NO_LINES");
 
   return withOrg(input.orgId, async (tx) => {
     const [customer] = await tx
       .select()
       .from(contacts)
       .where(and(eq(contacts.id, input.contactId), eq(contacts.orgId, input.orgId)));
-    if (!customer) throw new LedgerError(`Customer ${input.contactId} not found.`, "CONTACT_NOT_FOUND");
+    if (!customer)
+      throw new LedgerError(`Customer ${input.contactId} not found.`, "CONTACT_NOT_FOUND");
 
     const [org] = await tx
       .select({ baseCurrency: organizations.baseCurrency })
@@ -153,11 +162,18 @@ export async function convertSalesOrderToInvoice(args: {
       .select()
       .from(salesOrders)
       .where(and(eq(salesOrders.id, args.salesOrderId), eq(salesOrders.orgId, args.orgId)));
-    if (!so) throw new LedgerError(`Sales order ${args.salesOrderId} not found.`, "ORDER_NOT_FOUND");
+    if (!so)
+      throw new LedgerError(`Sales order ${args.salesOrderId} not found.`, "ORDER_NOT_FOUND");
     if (so.status === "invoiced" || so.status === "cancelled") {
-      throw new LedgerError(`Sales order ${so.orderNumber} is ${so.status}; cannot convert.`, "ORDER_NOT_CONVERTIBLE");
+      throw new LedgerError(
+        `Sales order ${so.orderNumber} is ${so.status}; cannot convert.`,
+        "ORDER_NOT_CONVERTIBLE",
+      );
     }
-    const ls = await tx.select().from(salesOrderLines).where(eq(salesOrderLines.salesOrderId, so.id));
+    const ls = await tx
+      .select()
+      .from(salesOrderLines)
+      .where(eq(salesOrderLines.salesOrderId, so.id));
     return { so, ls };
   });
 
@@ -222,7 +238,8 @@ export type CreatePurchaseOrderInput = {
 export async function createPurchaseOrder(
   input: CreatePurchaseOrderInput,
 ): Promise<{ purchaseOrderId: string; orderNumber: string; totalMinor: bigint }> {
-  if (input.lines.length === 0) throw new LedgerError("A purchase order needs at least one line.", "NO_LINES");
+  if (input.lines.length === 0)
+    throw new LedgerError("A purchase order needs at least one line.", "NO_LINES");
 
   return withOrg(input.orgId, async (tx) => {
     const [vendor] = await tx
@@ -289,12 +306,21 @@ export async function convertPurchaseOrderToBill(args: {
     const [po] = await tx
       .select()
       .from(purchaseOrders)
-      .where(and(eq(purchaseOrders.id, args.purchaseOrderId), eq(purchaseOrders.orgId, args.orgId)));
-    if (!po) throw new LedgerError(`Purchase order ${args.purchaseOrderId} not found.`, "ORDER_NOT_FOUND");
+      .where(
+        and(eq(purchaseOrders.id, args.purchaseOrderId), eq(purchaseOrders.orgId, args.orgId)),
+      );
+    if (!po)
+      throw new LedgerError(`Purchase order ${args.purchaseOrderId} not found.`, "ORDER_NOT_FOUND");
     if (po.status === "invoiced" || po.status === "cancelled") {
-      throw new LedgerError(`Purchase order ${po.orderNumber} is ${po.status}; cannot convert.`, "ORDER_NOT_CONVERTIBLE");
+      throw new LedgerError(
+        `Purchase order ${po.orderNumber} is ${po.status}; cannot convert.`,
+        "ORDER_NOT_CONVERTIBLE",
+      );
     }
-    const ls = await tx.select().from(purchaseOrderLines).where(eq(purchaseOrderLines.purchaseOrderId, po.id));
+    const ls = await tx
+      .select()
+      .from(purchaseOrderLines)
+      .where(eq(purchaseOrderLines.purchaseOrderId, po.id));
     return { po, ls };
   });
 

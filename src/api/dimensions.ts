@@ -27,7 +27,12 @@ export const fetchCostCenters = createServerFn({ method: "GET" }).handler(async 
   const { orgId } = await requireAuth();
   return withOrg(orgId, (tx) =>
     tx
-      .select({ id: costCenters.id, code: costCenters.code, name: costCenters.name, isActive: costCenters.isActive })
+      .select({
+        id: costCenters.id,
+        code: costCenters.code,
+        name: costCenters.name,
+        isActive: costCenters.isActive,
+      })
       .from(costCenters)
       .where(eq(costCenters.orgId, orgId))
       .orderBy(costCenters.code),

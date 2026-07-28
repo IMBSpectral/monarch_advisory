@@ -79,11 +79,19 @@ export async function closePeriod(args: {
       const net = BigInt(r.net);
       netSigned += net;
       // Zero the account: post the opposite of its balance.
-      postings.push(net > 0n ? credit(r.account_id, net, { memo: "Close to retained earnings" }) : debit(r.account_id, -net, { memo: "Close to retained earnings" }));
+      postings.push(
+        net > 0n
+          ? credit(r.account_id, net, { memo: "Close to retained earnings" })
+          : debit(r.account_id, -net, { memo: "Close to retained earnings" }),
+      );
     }
     // Balancing line to Retained Earnings. netSigned>0 → a loss (debit RE);
     // netSigned<0 → a profit (credit RE, increasing equity).
-    postings.push(netSigned > 0n ? debit(retainedEarnings, netSigned, { memo: "Net loss for period" }) : credit(retainedEarnings, -netSigned, { memo: "Net profit for period" }));
+    postings.push(
+      netSigned > 0n
+        ? debit(retainedEarnings, netSigned, { memo: "Net loss for period" })
+        : credit(retainedEarnings, -netSigned, { memo: "Net profit for period" }),
+    );
 
     const entry = await postJournalEntry(
       {
@@ -125,7 +133,10 @@ export async function reopenPeriod(args: {
   userId?: string | null;
 }): Promise<{ reversedEntryNumber: string | null }> {
   if (!args.reason?.trim()) {
-    throw new LedgerError("Reopening a period requires a reason (it's audited).", "REASON_REQUIRED");
+    throw new LedgerError(
+      "Reopening a period requires a reason (it's audited).",
+      "REASON_REQUIRED",
+    );
   }
 
   // Find the latest close entry and the current lock, then lift the lock so the
@@ -136,14 +147,27 @@ export async function reopenPeriod(args: {
     // The two most recent closes: we reverse the latest and drop the lock back to
     // the one before it (not fully open), so stacked earlier closes stay frozen.
     const recent = await tx
-      .select({ id: journalEntries.id, number: journalEntries.entryNumber, date: journalEntries.entryDate })
+      .select({
+        id: journalEntries.id,
+        number: journalEntries.entryNumber,
+        date: journalEntries.entryDate,
+      })
       .from(journalEntries)
-      .where(and(eq(journalEntries.orgId, args.orgId), eq(journalEntries.source, "period_close"), eq(journalEntries.status, "posted")))
+      .where(
+        and(
+          eq(journalEntries.orgId, args.orgId),
+          eq(journalEntries.source, "period_close"),
+          eq(journalEntries.status, "posted"),
+        ),
+      )
       .orderBy(desc(journalEntries.entryDate))
       .limit(2);
     const entry = recent[0] ?? null;
     const priorCloseDate = recent[1]?.date ?? null;
-    await tx.update(organizations).set({ booksClosedThrough: priorCloseDate, updatedAt: new Date() }).where(eq(organizations.id, args.orgId));
+    await tx
+      .update(organizations)
+      .set({ booksClosedThrough: priorCloseDate, updatedAt: new Date() })
+      .where(eq(organizations.id, args.orgId));
     await writeAudit(tx, {
       orgId: args.orgId,
       userId: args.userId ?? null,

@@ -10,7 +10,9 @@ import { organizations } from "./schema";
 import { ensureOrgProvisioned } from "@/server/provisioning";
 
 async function main() {
-  const orgs = await db.select({ id: organizations.id, name: organizations.name }).from(organizations);
+  const orgs = await db
+    .select({ id: organizations.id, name: organizations.name })
+    .from(organizations);
   for (const org of orgs) {
     await ensureOrgProvisioned(db, org.id);
     console.log(`  provisioned ${org.name}`);

@@ -5,7 +5,14 @@ import { toast } from "sonner";
 
 import { PageHeader } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,7 +26,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useCan } from "@/components/SessionContext";
 import { fetchSalesOrders, createSalesOrderFn, convertSalesOrderFn } from "@/api/vouchers";
 import { fetchContacts, fetchItems, fetchTaxRates } from "@/api/entities";
@@ -56,7 +69,9 @@ function SalesOrders() {
   async function convert(id: string) {
     setBusy(id);
     try {
-      const r = await convertSalesOrderFn({ data: { salesOrderId: id, invoiceDate: new Date().toISOString().slice(0, 10) } });
+      const r = await convertSalesOrderFn({
+        data: { salesOrderId: id, invoiceDate: new Date().toISOString().slice(0, 10) },
+      });
       toast.success(`Invoice ${r.number} created & posted`);
       await router.invalidate();
     } catch (err) {
@@ -71,7 +86,11 @@ function SalesOrders() {
       <PageHeader
         title="Sales Orders"
         subtitle="Customer commitments awaiting fulfilment"
-        actions={canCreate ? <NewOrder customers={customers} items={items} taxRates={taxRates} /> : undefined}
+        actions={
+          canCreate ? (
+            <NewOrder customers={customers} items={items} taxRates={taxRates} />
+          ) : undefined
+        }
       />
       <div className="p-6">
         <Card>
@@ -101,7 +120,9 @@ function SalesOrders() {
                     <TableCell>{o.name}</TableCell>
                     <TableCell className="text-muted-foreground">{o.date}</TableCell>
                     <TableCell className="text-muted-foreground">{o.expected ?? "—"}</TableCell>
-                    <TableCell className="text-right font-medium tabular-nums">{formatMinor(o.total)}</TableCell>
+                    <TableCell className="text-right font-medium tabular-nums">
+                      {formatMinor(o.total)}
+                    </TableCell>
                     <TableCell>
                       <Badge variant="outline" className={noteStatusStyle[o.status] ?? ""}>
                         {noteStatusLabel[o.status] ?? o.status}
@@ -109,8 +130,17 @@ function SalesOrders() {
                     </TableCell>
                     <TableCell className="text-right">
                       {canPost && o.status !== "invoiced" && o.status !== "cancelled" ? (
-                        <Button size="sm" variant="outline" disabled={busy === o.id} onClick={() => convert(o.id)}>
-                          {busy === o.id ? <Loader2 className="h-4 w-4 animate-spin" /> : "Convert to invoice"}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={busy === o.id}
+                          onClick={() => convert(o.id)}
+                        >
+                          {busy === o.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            "Convert to invoice"
+                          )}
                         </Button>
                       ) : (
                         <span className="text-xs text-muted-foreground">—</span>
@@ -127,7 +157,15 @@ function SalesOrders() {
   );
 }
 
-function NewOrder({ customers, items, taxRates }: { customers: any[]; items: any[]; taxRates: any[] }) {
+function NewOrder({
+  customers,
+  items,
+  taxRates,
+}: {
+  customers: any[];
+  items: any[];
+  taxRates: any[];
+}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
@@ -137,7 +175,12 @@ function NewOrder({ customers, items, taxRates }: { customers: any[]; items: any
   const [expected, setExpected] = useState("");
   const [lines, setLines] = useState<LineDraft[]>([emptyLine()]);
 
-  function reset() { setContactId(""); setExpected(""); setLines([emptyLine()]); setError(null); }
+  function reset() {
+    setContactId("");
+    setExpected("");
+    setLines([emptyLine()]);
+    setError(null);
+  }
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -150,7 +193,8 @@ function NewOrder({ customers, items, taxRates }: { customers: any[]; items: any
       const r = await createSalesOrderFn({
         data: { contactId, orderDate: date, expectedDate: expected || undefined, lines: usable },
       });
-      setOpen(false); reset();
+      setOpen(false);
+      reset();
       toast.success(`Sales order ${r.number} created`);
       await router.invalidate();
     } catch (err) {
@@ -161,7 +205,13 @@ function NewOrder({ customers, items, taxRates }: { customers: any[]; items: any
   }
 
   return (
-    <Dialog open={open} onOpenChange={(n) => { setOpen(n); if (!n) reset(); }}>
+    <Dialog
+      open={open}
+      onOpenChange={(n) => {
+        setOpen(n);
+        if (!n) reset();
+      }}
+    >
       <DialogTrigger asChild>
         <Button size="sm" className="bg-gradient-brand text-white">
           <Plus className="mr-1.5 h-4 w-4" />
@@ -172,35 +222,78 @@ function NewOrder({ customers, items, taxRates }: { customers: any[]; items: any
         <form onSubmit={submit}>
           <DialogHeader>
             <DialogTitle>New sales order</DialogTitle>
-            <DialogDescription>A commitment — it posts nothing until you convert it to an invoice.</DialogDescription>
+            <DialogDescription>
+              A commitment — it posts nothing until you convert it to an invoice.
+            </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-3 gap-4">
               <div className="grid gap-2 col-span-1">
                 <Label>Customer</Label>
                 <Select value={contactId} onValueChange={setContactId}>
-                  <SelectTrigger><SelectValue placeholder="Choose" /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose" />
+                  </SelectTrigger>
                   <SelectContent>
-                    {customers.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.displayName}</SelectItem>)}
+                    {customers.map((c: any) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.displayName}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="so-date">Order date</Label>
-                <Input id="so-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
+                <Input
+                  id="so-date"
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  required
+                />
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="so-exp">Expected</Label>
-                <Input id="so-exp" type="date" value={expected} onChange={(e) => setExpected(e.target.value)} />
+                <Input
+                  id="so-exp"
+                  type="date"
+                  value={expected}
+                  onChange={(e) => setExpected(e.target.value)}
+                />
               </div>
             </div>
-            <LinesEditor lines={lines} setLines={setLines} items={items} taxRates={taxRates} priceField="salePrice" />
+            <LinesEditor
+              lines={lines}
+              setLines={setLines}
+              items={items}
+              taxRates={taxRates}
+              priceField="salePrice"
+            />
           </div>
-          {error ? <p role="alert" className="mb-2 text-sm text-destructive">{error}</p> : null}
+          {error ? (
+            <p role="alert" className="mb-2 text-sm text-destructive">
+              {error}
+            </p>
+          ) : null}
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={pending}>Cancel</Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setOpen(false)}
+              disabled={pending}
+            >
+              Cancel
+            </Button>
             <Button type="submit" disabled={pending}>
-              {pending ? <><Loader2 className="mr-2 size-4 animate-spin" />Saving…</> : "Create order"}
+              {pending ? (
+                <>
+                  <Loader2 className="mr-2 size-4 animate-spin" />
+                  Saving…
+                </>
+              ) : (
+                "Create order"
+              )}
             </Button>
           </DialogFooter>
         </form>

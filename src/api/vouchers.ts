@@ -26,7 +26,12 @@ import {
 } from "@/db/schema";
 import { requireAuth, requirePermission } from "@/server/session";
 import { assertCan } from "@/server/auth";
-import { createCreditNote, postCreditNote, createDebitNote, postDebitNote } from "@/server/credit-notes";
+import {
+  createCreditNote,
+  postCreditNote,
+  createDebitNote,
+  postDebitNote,
+} from "@/server/credit-notes";
 import { recordContra } from "@/server/contra";
 import {
   createSalesOrder,
@@ -228,7 +233,8 @@ export const createCreditNoteFn = createServerFn({ method: "POST" })
       userId: p.userId,
       lines: data.lines.map((l) => ({ ...l, unitPriceMinor: BigInt(l.unitPriceMinor) })),
     });
-    if (data.postImmediately) await postCreditNote({ orgId: p.orgId, creditNoteId: r.creditNoteId, userId: p.userId });
+    if (data.postImmediately)
+      await postCreditNote({ orgId: p.orgId, creditNoteId: r.creditNoteId, userId: p.userId });
     return { number: r.creditNoteNumber };
   });
 
@@ -255,7 +261,8 @@ export const createDebitNoteFn = createServerFn({ method: "POST" })
       userId: p.userId,
       lines: data.lines.map((l) => ({ ...l, unitPriceMinor: BigInt(l.unitPriceMinor) })),
     });
-    if (data.postImmediately) await postDebitNote({ orgId: p.orgId, debitNoteId: r.debitNoteId, userId: p.userId });
+    if (data.postImmediately)
+      await postDebitNote({ orgId: p.orgId, debitNoteId: r.debitNoteId, userId: p.userId });
     return { number: r.debitNoteNumber };
   });
 
@@ -391,7 +398,11 @@ export const createGoodsReceiptFn = createServerFn({ method: "POST" })
       contactId: data.contactId,
       receiptDate: data.receiptDate,
       userId: p.userId,
-      lines: data.lines.map((l) => ({ ...l, quantity: l.quantity ?? "1", unitCostMinor: BigInt(l.unitCostMinor) })),
+      lines: data.lines.map((l) => ({
+        ...l,
+        quantity: l.quantity ?? "1",
+        unitCostMinor: BigInt(l.unitCostMinor),
+      })),
     });
     await postGoodsReceipt({ orgId: p.orgId, goodsReceiptId: r.goodsReceiptId, userId: p.userId });
     return { number: r.grnNumber };
@@ -436,7 +447,11 @@ export const createDeliveryFn = createServerFn({ method: "POST" })
       contactId: data.contactId,
       deliveryDate: data.deliveryDate,
       userId: p.userId,
-      lines: data.lines.map((l) => ({ ...l, quantity: l.quantity ?? "1", unitPriceMinor: BigInt(l.unitPriceMinor) })),
+      lines: data.lines.map((l) => ({
+        ...l,
+        quantity: l.quantity ?? "1",
+        unitPriceMinor: BigInt(l.unitPriceMinor),
+      })),
     });
     await postDeliveryNote({ orgId: p.orgId, deliveryNoteId: r.deliveryNoteId, userId: p.userId });
     return { number: r.deliveryNumber };

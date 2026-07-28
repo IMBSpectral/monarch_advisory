@@ -437,7 +437,8 @@ export async function postInvoice(args: {
       const invAcct =
         tracked.inventoryAccountId ?? (await resolveControlAccount(tx, args.orgId, "inventory"));
       const cogsAcct =
-        tracked.cogsAccountId ?? (await resolveControlAccount(tx, args.orgId, "cost_of_goods_sold"));
+        tracked.cogsAccountId ??
+        (await resolveControlAccount(tx, args.orgId, "cost_of_goods_sold"));
       itemAccounts.set(line.itemId, { invAcct, cogsAcct });
       issueRequests.push({
         itemId: line.itemId,

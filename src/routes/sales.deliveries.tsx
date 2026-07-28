@@ -5,7 +5,14 @@ import { toast } from "sonner";
 
 import { PageHeader } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,7 +26,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useCan } from "@/components/SessionContext";
 import { fetchDeliveries, createDeliveryFn, convertDeliveryFn } from "@/api/vouchers";
 import { fetchContacts, fetchItems } from "@/api/entities";
@@ -53,7 +66,9 @@ function Deliveries() {
   async function invoice(id: string) {
     setBusy(id);
     try {
-      const r = await convertDeliveryFn({ data: { deliveryNoteId: id, invoiceDate: new Date().toISOString().slice(0, 10) } });
+      const r = await convertDeliveryFn({
+        data: { deliveryNoteId: id, invoiceDate: new Date().toISOString().slice(0, 10) },
+      });
       toast.success(`Invoice ${r.number} created (revenue only)`);
       await router.invalidate();
     } catch (err) {
@@ -96,14 +111,28 @@ function Deliveries() {
                     <TableCell>{d.name}</TableCell>
                     <TableCell className="text-muted-foreground">{d.date}</TableCell>
                     <TableCell>
-                      <Badge variant="outline" className={d.invoiceId ? noteStatusStyle.invoiced : noteStatusStyle[d.status]}>
-                        {d.invoiceId ? "Invoiced" : noteStatusLabel[d.status] ?? d.status}
+                      <Badge
+                        variant="outline"
+                        className={
+                          d.invoiceId ? noteStatusStyle.invoiced : noteStatusStyle[d.status]
+                        }
+                      >
+                        {d.invoiceId ? "Invoiced" : (noteStatusLabel[d.status] ?? d.status)}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
                       {canPost && d.status === "posted" && !d.invoiceId ? (
-                        <Button size="sm" variant="outline" disabled={busy === d.id} onClick={() => invoice(d.id)}>
-                          {busy === d.id ? <Loader2 className="h-4 w-4 animate-spin" /> : "Raise invoice"}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={busy === d.id}
+                          onClick={() => invoice(d.id)}
+                        >
+                          {busy === d.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            "Raise invoice"
+                          )}
                         </Button>
                       ) : (
                         <span className="text-xs text-muted-foreground">—</span>
@@ -129,7 +158,11 @@ function NewDelivery({ customers, items }: { customers: any[]; items: any[] }) {
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [lines, setLines] = useState<LineDraft[]>([emptyLine()]);
 
-  function reset() { setContactId(""); setLines([emptyLine()]); setError(null); }
+  function reset() {
+    setContactId("");
+    setLines([emptyLine()]);
+    setError(null);
+  }
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -147,7 +180,8 @@ function NewDelivery({ customers, items }: { customers: any[]; items: any[] }) {
     setPending(true);
     try {
       const r = await createDeliveryFn({ data: { contactId, deliveryDate: date, lines: usable } });
-      setOpen(false); reset();
+      setOpen(false);
+      reset();
       toast.success(`Delivery ${r.number} posted (stock out)`);
       await router.invalidate();
     } catch (err) {
@@ -158,7 +192,13 @@ function NewDelivery({ customers, items }: { customers: any[]; items: any[] }) {
   }
 
   return (
-    <Dialog open={open} onOpenChange={(n) => { setOpen(n); if (!n) reset(); }}>
+    <Dialog
+      open={open}
+      onOpenChange={(n) => {
+        setOpen(n);
+        if (!n) reset();
+      }}
+    >
       <DialogTrigger asChild>
         <Button size="sm" className="bg-gradient-brand text-white">
           <Plus className="mr-1.5 h-4 w-4" />
@@ -169,31 +209,71 @@ function NewDelivery({ customers, items }: { customers: any[]; items: any[] }) {
         <form onSubmit={submit}>
           <DialogHeader>
             <DialogTitle>New delivery note</DialogTitle>
-            <DialogDescription>Dispatch stock now; invoice later. Posts Dr COGS / Cr Inventory.</DialogDescription>
+            <DialogDescription>
+              Dispatch stock now; invoice later. Posts Dr COGS / Cr Inventory.
+            </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label>Customer</Label>
                 <Select value={contactId} onValueChange={setContactId}>
-                  <SelectTrigger><SelectValue placeholder="Choose" /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose" />
+                  </SelectTrigger>
                   <SelectContent>
-                    {customers.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.displayName}</SelectItem>)}
+                    {customers.map((c: any) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.displayName}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="dc-date">Delivery date</Label>
-                <Input id="dc-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
+                <Input
+                  id="dc-date"
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  required
+                />
               </div>
             </div>
-            <LinesEditor lines={lines} setLines={setLines} items={items} taxRates={[]} priceField="salePrice" showTax={false} requireItem />
+            <LinesEditor
+              lines={lines}
+              setLines={setLines}
+              items={items}
+              taxRates={[]}
+              priceField="salePrice"
+              showTax={false}
+              requireItem
+            />
           </div>
-          {error ? <p role="alert" className="mb-2 text-sm text-destructive">{error}</p> : null}
+          {error ? (
+            <p role="alert" className="mb-2 text-sm text-destructive">
+              {error}
+            </p>
+          ) : null}
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={pending}>Cancel</Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setOpen(false)}
+              disabled={pending}
+            >
+              Cancel
+            </Button>
             <Button type="submit" disabled={pending}>
-              {pending ? <><Loader2 className="mr-2 size-4 animate-spin" />Posting…</> : "Dispatch stock"}
+              {pending ? (
+                <>
+                  <Loader2 className="mr-2 size-4 animate-spin" />
+                  Posting…
+                </>
+              ) : (
+                "Dispatch stock"
+              )}
             </Button>
           </DialogFooter>
         </form>

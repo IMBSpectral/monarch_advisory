@@ -6,7 +6,14 @@ import { toast } from "sonner";
 import { PageHeader } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { useCan } from "@/components/SessionContext";
 import { fetchForexExposure, postForexRevaluationFn } from "@/api/forex";
 import { formatMinor, formatMinorSigned } from "@/lib/money";
@@ -48,7 +55,12 @@ function Forex() {
         subtitle="Unrealised gain / loss on foreign-currency accounts"
         actions={
           canPost ? (
-            <Button size="sm" className="bg-gradient-brand text-white" disabled={busy || !hasMovement} onClick={revalue}>
+            <Button
+              size="sm"
+              className="bg-gradient-brand text-white"
+              disabled={busy || !hasMovement}
+              onClick={revalue}
+            >
               {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               Post revaluation
             </Button>
@@ -79,11 +91,21 @@ function Forex() {
                 ex.rows.map((r) => (
                   <TableRow key={r.code} className="hover:bg-muted/40">
                     <TableCell className="font-medium">{r.name}</TableCell>
-                    <TableCell className="text-right tabular-nums">{fx(r.foreignBalance, r.currency)}</TableCell>
-                    <TableCell className="text-right tabular-nums">₹{r.rate?.toFixed(4) ?? "—"}</TableCell>
-                    <TableCell className="text-right tabular-nums">{formatMinor(r.baseCarrying)}</TableCell>
-                    <TableCell className="text-right tabular-nums">{formatMinor(r.revalued)}</TableCell>
-                    <TableCell className={`text-right font-medium tabular-nums ${BigInt(r.unrealized) < 0n ? "text-destructive" : "text-success"}`}>
+                    <TableCell className="text-right tabular-nums">
+                      {fx(r.foreignBalance, r.currency)}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      ₹{r.rate?.toFixed(4) ?? "—"}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {formatMinor(r.baseCarrying)}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {formatMinor(r.revalued)}
+                    </TableCell>
+                    <TableCell
+                      className={`text-right font-medium tabular-nums ${BigInt(r.unrealized) < 0n ? "text-destructive" : "text-success"}`}
+                    >
                       {formatMinorSigned(r.unrealized)}
                     </TableCell>
                   </TableRow>
@@ -93,8 +115,12 @@ function Forex() {
             {ex.rows.length > 0 ? (
               <tfoot>
                 <TableRow className="border-t-2 font-semibold">
-                  <TableCell colSpan={5}>Total unrealised {BigInt(ex.totalUnrealized) < 0n ? "loss" : "gain"}</TableCell>
-                  <TableCell className="text-right tabular-nums">{formatMinorSigned(ex.totalUnrealized)}</TableCell>
+                  <TableCell colSpan={5}>
+                    Total unrealised {BigInt(ex.totalUnrealized) < 0n ? "loss" : "gain"}
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums">
+                    {formatMinorSigned(ex.totalUnrealized)}
+                  </TableCell>
                 </TableRow>
               </tfoot>
             ) : null}

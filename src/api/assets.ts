@@ -8,7 +8,12 @@ import { z } from "zod";
 import { withOrg } from "@/db/client";
 import { accounts } from "@/db/schema";
 import { requireAuth, requirePermission } from "@/server/session";
-import { createFixedAsset, runDepreciation, disposeFixedAsset, getAssetRegister } from "@/server/assets";
+import {
+  createFixedAsset,
+  runDepreciation,
+  disposeFixedAsset,
+  getAssetRegister,
+} from "@/server/assets";
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -33,20 +38,34 @@ export const fetchAssetAccounts = createServerFn({ method: "GET" }).handler(asyn
   const { orgId } = await requireAuth();
   return withOrg(orgId, async (tx) => {
     const rows = await tx
-      .select({ id: accounts.id, code: accounts.code, name: accounts.name, subtype: accounts.subtype })
+      .select({
+        id: accounts.id,
+        code: accounts.code,
+        name: accounts.name,
+        subtype: accounts.subtype,
+      })
       .from(accounts)
       .where(
         and(
           eq(accounts.orgId, orgId),
           eq(accounts.isGroup, false),
           eq(accounts.isActive, true),
-          inArray(accounts.subtype, ["fixed_asset", "cash_and_bank", "other_income", "other_expense"]),
+          inArray(accounts.subtype, [
+            "fixed_asset",
+            "cash_and_bank",
+            "other_income",
+            "other_expense",
+          ]),
         ),
       )
       .orderBy(accounts.code);
     return {
-      fixedAsset: rows.filter((r) => r.subtype === "fixed_asset").map((r) => ({ id: r.id, name: r.name })),
-      cash: rows.filter((r) => r.subtype === "cash_and_bank").map((r) => ({ id: r.id, name: r.name })),
+      fixedAsset: rows
+        .filter((r) => r.subtype === "fixed_asset")
+        .map((r) => ({ id: r.id, name: r.name })),
+      cash: rows
+        .filter((r) => r.subtype === "cash_and_bank")
+        .map((r) => ({ id: r.id, name: r.name })),
       gainLoss: rows
         .filter((r) => r.subtype === "other_income" || r.subtype === "other_expense")
         .map((r) => ({ id: r.id, name: r.name })),
@@ -87,7 +106,11 @@ export const createFixedAssetFn = createServerFn({ method: "POST" })
 export const runDepreciationFn = createServerFn({ method: "POST" }).handler(async () => {
   const p = await requirePermission("ledger:post");
   const r = await runDepreciation({ orgId: p.orgId, throughDate: today(), userId: p.userId });
-  return { monthsPosted: r.monthsPosted, charged: r.chargedMinor.toString(), entryNumber: r.entryNumber };
+  return {
+    monthsPosted: r.monthsPosted,
+    charged: r.chargedMinor.toString(),
+    entryNumber: r.entryNumber,
+  };
 });
 
 export const disposeFixedAssetFn = createServerFn({ method: "POST" })

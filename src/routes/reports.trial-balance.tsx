@@ -3,7 +3,14 @@ import { Fragment } from "react";
 import { PageHeader } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { fetchTrialBalance } from "@/api/index";
 import { formatMinor } from "@/lib/money";
 
@@ -36,7 +43,11 @@ function TrialBalance() {
         actions={
           <Badge
             variant="outline"
-            className={tb.isBalanced ? "border-success/20 bg-success/10 text-success" : "border-destructive/20 bg-destructive/10 text-destructive"}
+            className={
+              tb.isBalanced
+                ? "border-success/20 bg-success/10 text-success"
+                : "border-destructive/20 bg-destructive/10 text-destructive"
+            }
           >
             {tb.isBalanced ? "Balanced" : "Out of balance"}
           </Badge>
@@ -57,16 +68,25 @@ function TrialBalance() {
               {groups.map((g) => (
                 <Fragment key={g.type}>
                   <TableRow className="bg-muted/40">
-                    <TableCell colSpan={4} className="text-xs font-semibold uppercase tracking-widest text-brand">
+                    <TableCell
+                      colSpan={4}
+                      className="text-xs font-semibold uppercase tracking-widest text-brand"
+                    >
                       {TYPE_LABEL[g.type]}
                     </TableCell>
                   </TableRow>
                   {g.rows.map((r) => (
                     <TableRow key={r.accountId} className="hover:bg-muted/40">
-                      <TableCell className="font-mono text-xs text-muted-foreground">{r.code}</TableCell>
+                      <TableCell className="font-mono text-xs text-muted-foreground">
+                        {r.code}
+                      </TableCell>
                       <TableCell>{r.name}</TableCell>
-                      <TableCell className="text-right tabular-nums">{Number(r.debitMinor) ? formatMinor(r.debitMinor) : ""}</TableCell>
-                      <TableCell className="text-right tabular-nums">{Number(r.creditMinor) ? formatMinor(r.creditMinor) : ""}</TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {Number(r.debitMinor) ? formatMinor(r.debitMinor) : ""}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {Number(r.creditMinor) ? formatMinor(r.creditMinor) : ""}
+                      </TableCell>
                     </TableRow>
                   ))}
                 </Fragment>
@@ -75,8 +95,12 @@ function TrialBalance() {
             <tfoot>
               <TableRow className="border-t-2 font-semibold">
                 <TableCell colSpan={2}>Total</TableCell>
-                <TableCell className="text-right tabular-nums">{formatMinor(tb.totalDebit)}</TableCell>
-                <TableCell className="text-right tabular-nums">{formatMinor(tb.totalCredit)}</TableCell>
+                <TableCell className="text-right tabular-nums">
+                  {formatMinor(tb.totalDebit)}
+                </TableCell>
+                <TableCell className="text-right tabular-nums">
+                  {formatMinor(tb.totalCredit)}
+                </TableCell>
               </TableRow>
             </tfoot>
           </Table>

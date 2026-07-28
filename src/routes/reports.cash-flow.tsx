@@ -51,10 +51,16 @@ function CashFlow() {
         <Card className="mx-auto max-w-2xl p-8">
           <div className="mb-6 text-center">
             <h2 className="text-xl font-bold">Cash Flow Statement</h2>
-            <p className="text-sm text-muted-foreground">For period {cf.from} → {cf.to}</p>
+            <p className="text-sm text-muted-foreground">
+              For period {cf.from} → {cf.to}
+            </p>
             <Badge
               variant="outline"
-              className={cf.reconciles ? "mt-2 border-success/20 bg-success/10 text-success" : "mt-2 border-destructive/20 bg-destructive/10 text-destructive"}
+              className={
+                cf.reconciles
+                  ? "mt-2 border-success/20 bg-success/10 text-success"
+                  : "mt-2 border-destructive/20 bg-destructive/10 text-destructive"
+              }
             >
               {cf.reconciles ? "Reconciled" : "Does not reconcile"}
             </Badge>

@@ -5,7 +5,14 @@ import { toast } from "sonner";
 
 import { PageHeader } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,7 +26,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useCan } from "@/components/SessionContext";
 import { fetchCreditNotes, createCreditNoteFn } from "@/api/vouchers";
 import { fetchInvoices } from "@/api/index";
@@ -89,7 +102,9 @@ function CreditNotes() {
                     <TableCell>{n.name}</TableCell>
                     <TableCell className="text-muted-foreground">{n.date}</TableCell>
                     <TableCell className="text-muted-foreground">{n.reason ?? "—"}</TableCell>
-                    <TableCell className="text-right font-medium tabular-nums">{formatMinor(n.total)}</TableCell>
+                    <TableCell className="text-right font-medium tabular-nums">
+                      {formatMinor(n.total)}
+                    </TableCell>
                     <TableCell>
                       <Badge variant="outline" className={noteStatusStyle[n.status] ?? ""}>
                         {noteStatusLabel[n.status] ?? n.status}
@@ -106,7 +121,13 @@ function CreditNotes() {
   );
 }
 
-type Invoice = { id: string; invoiceNumber: string; customerName: string; contactId: string; balance: string };
+type Invoice = {
+  id: string;
+  invoiceNumber: string;
+  customerName: string;
+  contactId: string;
+  balance: string;
+};
 
 function NewCreditNote({
   invoices,
@@ -169,7 +190,13 @@ function NewCreditNote({
   }
 
   return (
-    <Dialog open={open} onOpenChange={(n) => { setOpen(n); if (!n) reset(); }}>
+    <Dialog
+      open={open}
+      onOpenChange={(n) => {
+        setOpen(n);
+        if (!n) reset();
+      }}
+    >
       <DialogTrigger asChild>
         <Button size="sm" className="bg-gradient-brand text-white">
           <Plus className="mr-1.5 h-4 w-4" />
@@ -180,14 +207,18 @@ function NewCreditNote({
         <form onSubmit={submit}>
           <DialogHeader>
             <DialogTitle>New credit note</DialogTitle>
-            <DialogDescription>Credit a customer for returned goods or an allowance.</DialogDescription>
+            <DialogDescription>
+              Credit a customer for returned goods or an allowance.
+            </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label>Against invoice</Label>
                 <Select value={invoiceId} onValueChange={setInvoiceId}>
-                  <SelectTrigger><SelectValue placeholder="Choose invoice" /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose invoice" />
+                  </SelectTrigger>
                   <SelectContent>
                     {invoices.map((i) => (
                       <SelectItem key={i.id} value={i.id}>
@@ -199,24 +230,64 @@ function NewCreditNote({
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="cn-date">Date</Label>
-                <Input id="cn-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
+                <Input
+                  id="cn-date"
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  required
+                />
               </div>
             </div>
             <div className="grid gap-2">
               <Label htmlFor="cn-reason">Reason</Label>
-              <Input id="cn-reason" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="e.g. damaged in transit" />
+              <Input
+                id="cn-reason"
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                placeholder="e.g. damaged in transit"
+              />
             </div>
-            <LinesEditor lines={lines} setLines={setLines} items={items} taxRates={taxRates} priceField="salePrice" />
+            <LinesEditor
+              lines={lines}
+              setLines={setLines}
+              items={items}
+              taxRates={taxRates}
+              priceField="salePrice"
+            />
             <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={restock} onChange={(e) => setRestock(e.target.checked)} className="size-4" />
+              <input
+                type="checkbox"
+                checked={restock}
+                onChange={(e) => setRestock(e.target.checked)}
+                className="size-4"
+              />
               Return goods to stock (reverses COGS at average cost)
             </label>
           </div>
-          {error ? <p role="alert" className="mb-2 text-sm text-destructive">{error}</p> : null}
+          {error ? (
+            <p role="alert" className="mb-2 text-sm text-destructive">
+              {error}
+            </p>
+          ) : null}
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={pending}>Cancel</Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setOpen(false)}
+              disabled={pending}
+            >
+              Cancel
+            </Button>
             <Button type="submit" disabled={pending}>
-              {pending ? <><Loader2 className="mr-2 size-4 animate-spin" />Posting…</> : "Post credit note"}
+              {pending ? (
+                <>
+                  <Loader2 className="mr-2 size-4 animate-spin" />
+                  Posting…
+                </>
+              ) : (
+                "Post credit note"
+              )}
             </Button>
           </DialogFooter>
         </form>

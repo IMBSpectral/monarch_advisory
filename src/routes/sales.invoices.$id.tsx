@@ -209,7 +209,10 @@ function InvoiceDetail() {
                 <div className="flex justify-between text-xs text-muted-foreground">
                   <span>In {invoice.currency}</span>
                   <span className="tabular-nums">
-                    {invoice.currency} {(Number(invoice.foreignTotal) / 100).toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                    {invoice.currency}{" "}
+                    {(Number(invoice.foreignTotal) / 100).toLocaleString("en-US", {
+                      minimumFractionDigits: 2,
+                    })}
                   </span>
                 </div>
               ) : null}

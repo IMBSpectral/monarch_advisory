@@ -56,7 +56,13 @@ function mulDivRound(amount: bigint, numerator: bigint, denominator: bigint): bi
  * Goods receipts (GRN)
  * ──────────────────────────────────────────────────────────────────────────*/
 
-export type GrnLine = { itemId: string; description: string; quantity: string; unitCostMinor: bigint; taxRateId?: string | null };
+export type GrnLine = {
+  itemId: string;
+  description: string;
+  quantity: string;
+  unitCostMinor: bigint;
+  taxRateId?: string | null;
+};
 
 export async function createGoodsReceipt(input: {
   orgId: string;
@@ -67,11 +73,13 @@ export async function createGoodsReceipt(input: {
   currency?: string;
   userId?: string | null;
 }): Promise<{ goodsReceiptId: string; grnNumber: string; totalMinor: bigint }> {
-  if (input.lines.length === 0) throw new LedgerError("A goods receipt needs at least one line.", "NO_LINES");
+  if (input.lines.length === 0)
+    throw new LedgerError("A goods receipt needs at least one line.", "NO_LINES");
 
   return withOrg(input.orgId, async (tx) => {
     const total = input.lines.reduce(
-      (a, l) => a + mulDivRound(l.unitCostMinor, BigInt(Math.round(Number(l.quantity) * 10_000)), 10_000n),
+      (a, l) =>
+        a + mulDivRound(l.unitCostMinor, BigInt(Math.round(Number(l.quantity) * 10_000)), 10_000n),
       0n,
     );
     const grnNumber = await claimNextNumber(tx, input.orgId, "grn");
@@ -117,10 +125,15 @@ export async function postGoodsReceipt(args: {
       .select()
       .from(goodsReceipts)
       .where(and(eq(goodsReceipts.id, args.goodsReceiptId), eq(goodsReceipts.orgId, args.orgId)));
-    if (!grn) throw new LedgerError(`Goods receipt ${args.goodsReceiptId} not found.`, "GRN_NOT_FOUND");
-    if (grn.status !== "draft") throw new LedgerError(`GRN ${grn.grnNumber} is ${grn.status}.`, "GRN_NOT_DRAFT");
+    if (!grn)
+      throw new LedgerError(`Goods receipt ${args.goodsReceiptId} not found.`, "GRN_NOT_FOUND");
+    if (grn.status !== "draft")
+      throw new LedgerError(`GRN ${grn.grnNumber} is ${grn.status}.`, "GRN_NOT_DRAFT");
 
-    const lines = await tx.select().from(goodsReceiptLines).where(eq(goodsReceiptLines.goodsReceiptId, grn.id));
+    const lines = await tx
+      .select()
+      .from(goodsReceiptLines)
+      .where(eq(goodsReceiptLines.goodsReceiptId, grn.id));
     const warehouseId = await getDefaultWarehouseId(tx, args.orgId);
     const inventoryAcct = await resolveControlAccount(tx, args.orgId, "inventory");
     const grniAcct = await resolveControlAccount(tx, args.orgId, "goods_received_clearing");
@@ -128,7 +141,11 @@ export async function postGoodsReceipt(args: {
     const receipts = lines.map((l) => ({
       itemId: l.itemId,
       quantity: l.quantity,
-      valueMinor: mulDivRound(l.unitCostMinor, BigInt(Math.round(Number(l.quantity) * 10_000)), 10_000n),
+      valueMinor: mulDivRound(
+        l.unitCostMinor,
+        BigInt(Math.round(Number(l.quantity) * 10_000)),
+        10_000n,
+      ),
     }));
     const total = receipts.reduce((a, r) => a + r.valueMinor, 0n);
 
@@ -198,10 +215,16 @@ export async function convertGoodsReceiptToBill(args: {
       .select()
       .from(goodsReceipts)
       .where(and(eq(goodsReceipts.id, args.goodsReceiptId), eq(goodsReceipts.orgId, args.orgId)));
-    if (!grn) throw new LedgerError(`Goods receipt ${args.goodsReceiptId} not found.`, "GRN_NOT_FOUND");
-    if (grn.status !== "posted") throw new LedgerError(`GRN ${grn.grnNumber} must be posted first.`, "GRN_NOT_POSTED");
-    if (grn.billId) throw new LedgerError(`GRN ${grn.grnNumber} is already billed.`, "GRN_ALREADY_BILLED");
-    const ls = await tx.select().from(goodsReceiptLines).where(eq(goodsReceiptLines.goodsReceiptId, grn.id));
+    if (!grn)
+      throw new LedgerError(`Goods receipt ${args.goodsReceiptId} not found.`, "GRN_NOT_FOUND");
+    if (grn.status !== "posted")
+      throw new LedgerError(`GRN ${grn.grnNumber} must be posted first.`, "GRN_NOT_POSTED");
+    if (grn.billId)
+      throw new LedgerError(`GRN ${grn.grnNumber} is already billed.`, "GRN_ALREADY_BILLED");
+    const ls = await tx
+      .select()
+      .from(goodsReceiptLines)
+      .where(eq(goodsReceiptLines.goodsReceiptId, grn.id));
     return { grn, ls };
   });
 
@@ -226,7 +249,10 @@ export async function convertGoodsReceiptToBill(args: {
   });
 
   await withOrg(args.orgId, async (tx) => {
-    await tx.update(bills).set({ stockReceived: true, updatedAt: new Date() }).where(eq(bills.id, created.billId));
+    await tx
+      .update(bills)
+      .set({ stockReceived: true, updatedAt: new Date() })
+      .where(eq(bills.id, created.billId));
     await tx
       .update(goodsReceipts)
       .set({ billId: created.billId, updatedAt: new Date() })
@@ -244,7 +270,14 @@ export async function convertGoodsReceiptToBill(args: {
  * Delivery notes
  * ──────────────────────────────────────────────────────────────────────────*/
 
-export type DeliveryLine = { itemId: string; description: string; quantity: string; unitPriceMinor: bigint; taxRateId?: string | null; revenueAccountId?: string | null };
+export type DeliveryLine = {
+  itemId: string;
+  description: string;
+  quantity: string;
+  unitPriceMinor: bigint;
+  taxRateId?: string | null;
+  revenueAccountId?: string | null;
+};
 
 export async function createDeliveryNote(input: {
   orgId: string;
@@ -255,7 +288,8 @@ export async function createDeliveryNote(input: {
   currency?: string;
   userId?: string | null;
 }): Promise<{ deliveryNoteId: string; deliveryNumber: string }> {
-  if (input.lines.length === 0) throw new LedgerError("A delivery note needs at least one line.", "NO_LINES");
+  if (input.lines.length === 0)
+    throw new LedgerError("A delivery note needs at least one line.", "NO_LINES");
 
   return withOrg(input.orgId, async (tx) => {
     const deliveryNumber = await claimNextNumber(tx, input.orgId, "delivery_note");
@@ -302,10 +336,21 @@ export async function postDeliveryNote(args: {
       .select()
       .from(deliveryNotes)
       .where(and(eq(deliveryNotes.id, args.deliveryNoteId), eq(deliveryNotes.orgId, args.orgId)));
-    if (!dn) throw new LedgerError(`Delivery note ${args.deliveryNoteId} not found.`, "DELIVERY_NOT_FOUND");
-    if (dn.status !== "draft") throw new LedgerError(`Delivery note ${dn.deliveryNumber} is ${dn.status}.`, "DELIVERY_NOT_DRAFT");
+    if (!dn)
+      throw new LedgerError(
+        `Delivery note ${args.deliveryNoteId} not found.`,
+        "DELIVERY_NOT_FOUND",
+      );
+    if (dn.status !== "draft")
+      throw new LedgerError(
+        `Delivery note ${dn.deliveryNumber} is ${dn.status}.`,
+        "DELIVERY_NOT_DRAFT",
+      );
 
-    const lines = await tx.select().from(deliveryNoteLines).where(eq(deliveryNoteLines.deliveryNoteId, dn.id));
+    const lines = await tx
+      .select()
+      .from(deliveryNoteLines)
+      .where(eq(deliveryNoteLines.deliveryNoteId, dn.id));
     const warehouseId = await getDefaultWarehouseId(tx, args.orgId);
 
     const issueRequests: IssueRequest[] = [];
@@ -313,13 +358,23 @@ export async function postDeliveryNote(args: {
     for (const l of lines) {
       const tracked = await getTrackedItem(tx, args.orgId, l.itemId);
       if (!tracked) {
-        throw new LedgerError(`Item on delivery ${dn.deliveryNumber} is not stock-tracked.`, "ITEM_NOT_TRACKED");
+        throw new LedgerError(
+          `Item on delivery ${dn.deliveryNumber} is not stock-tracked.`,
+          "ITEM_NOT_TRACKED",
+        );
       }
       itemAccounts.set(l.itemId, {
-        invAcct: tracked.inventoryAccountId ?? (await resolveControlAccount(tx, args.orgId, "inventory")),
-        cogsAcct: tracked.cogsAccountId ?? (await resolveControlAccount(tx, args.orgId, "cost_of_goods_sold")),
+        invAcct:
+          tracked.inventoryAccountId ?? (await resolveControlAccount(tx, args.orgId, "inventory")),
+        cogsAcct:
+          tracked.cogsAccountId ??
+          (await resolveControlAccount(tx, args.orgId, "cost_of_goods_sold")),
       });
-      issueRequests.push({ itemId: l.itemId, quantity: l.quantity, memo: `Delivery — ${dn.deliveryNumber}` });
+      issueRequests.push({
+        itemId: l.itemId,
+        quantity: l.quantity,
+        memo: `Delivery — ${dn.deliveryNumber}`,
+      });
     }
 
     const plan = await planStockOut(tx, args.orgId, warehouseId, issueRequests);
@@ -331,8 +386,10 @@ export async function postDeliveryNote(args: {
       invByAccount.set(a.invAcct, (invByAccount.get(a.invAcct) ?? 0n) + pl.valueMinor);
     }
     const postings: PostingLine[] = [];
-    for (const [acc, amt] of cogsByAccount) postings.push(debit(acc, amt, { memo: `COGS — ${dn.deliveryNumber}` }));
-    for (const [acc, amt] of invByAccount) postings.push(credit(acc, amt, { memo: `Stock out — ${dn.deliveryNumber}` }));
+    for (const [acc, amt] of cogsByAccount)
+      postings.push(debit(acc, amt, { memo: `COGS — ${dn.deliveryNumber}` }));
+    for (const [acc, amt] of invByAccount)
+      postings.push(credit(acc, amt, { memo: `Stock out — ${dn.deliveryNumber}` }));
 
     const entry = await postJournalEntry(
       {
@@ -388,10 +445,25 @@ export async function convertDeliveryToInvoice(args: {
       .select()
       .from(deliveryNotes)
       .where(and(eq(deliveryNotes.id, args.deliveryNoteId), eq(deliveryNotes.orgId, args.orgId)));
-    if (!dn) throw new LedgerError(`Delivery note ${args.deliveryNoteId} not found.`, "DELIVERY_NOT_FOUND");
-    if (dn.status !== "posted") throw new LedgerError(`Delivery ${dn.deliveryNumber} must be posted first.`, "DELIVERY_NOT_POSTED");
-    if (dn.invoiceId) throw new LedgerError(`Delivery ${dn.deliveryNumber} is already invoiced.`, "DELIVERY_ALREADY_INVOICED");
-    const ls = await tx.select().from(deliveryNoteLines).where(eq(deliveryNoteLines.deliveryNoteId, dn.id));
+    if (!dn)
+      throw new LedgerError(
+        `Delivery note ${args.deliveryNoteId} not found.`,
+        "DELIVERY_NOT_FOUND",
+      );
+    if (dn.status !== "posted")
+      throw new LedgerError(
+        `Delivery ${dn.deliveryNumber} must be posted first.`,
+        "DELIVERY_NOT_POSTED",
+      );
+    if (dn.invoiceId)
+      throw new LedgerError(
+        `Delivery ${dn.deliveryNumber} is already invoiced.`,
+        "DELIVERY_ALREADY_INVOICED",
+      );
+    const ls = await tx
+      .select()
+      .from(deliveryNoteLines)
+      .where(eq(deliveryNoteLines.deliveryNoteId, dn.id));
     return { dn, ls };
   });
 
@@ -417,7 +489,10 @@ export async function convertDeliveryToInvoice(args: {
   await withOrg(args.orgId, async (tx) => {
     // Stock and COGS were already booked by the delivery — the invoice must
     // recognise revenue only.
-    await tx.update(invoices).set({ stockRelieved: true, updatedAt: new Date() }).where(eq(invoices.id, created.invoiceId));
+    await tx
+      .update(invoices)
+      .set({ stockRelieved: true, updatedAt: new Date() })
+      .where(eq(invoices.id, created.invoiceId));
     await tx
       .update(deliveryNotes)
       .set({ invoiceId: created.invoiceId, updatedAt: new Date() })

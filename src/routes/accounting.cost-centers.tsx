@@ -5,7 +5,14 @@ import { toast } from "sonner";
 
 import { PageHeader } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -60,7 +67,10 @@ function CostCenters() {
                     <TableCell className="font-mono text-xs">{c.code}</TableCell>
                     <TableCell className="font-medium">{c.name}</TableCell>
                     <TableCell>
-                      <Badge variant="outline" className={c.isActive ? "border-success/20 bg-success/10 text-success" : ""}>
+                      <Badge
+                        variant="outline"
+                        className={c.isActive ? "border-success/20 bg-success/10 text-success" : ""}
+                      >
                         {c.isActive ? "Active" : "Inactive"}
                       </Badge>
                     </TableCell>
@@ -114,23 +124,53 @@ function NewCostCenter() {
         <form onSubmit={submit}>
           <DialogHeader>
             <DialogTitle>New cost centre</DialogTitle>
-            <DialogDescription>A department or project to attribute revenue and cost to.</DialogDescription>
+            <DialogDescription>
+              A department or project to attribute revenue and cost to.
+            </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
               <Label htmlFor="cc-code">Code</Label>
-              <Input id="cc-code" value={code} onChange={(e) => setCode(e.target.value)} placeholder="e.g. RND" />
+              <Input
+                id="cc-code"
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                placeholder="e.g. RND"
+              />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="cc-name">Name</Label>
-              <Input id="cc-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Research & Development" />
+              <Input
+                id="cc-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g. Research & Development"
+              />
             </div>
           </div>
-          {error ? <p role="alert" className="mb-2 text-sm text-destructive">{error}</p> : null}
+          {error ? (
+            <p role="alert" className="mb-2 text-sm text-destructive">
+              {error}
+            </p>
+          ) : null}
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={pending}>Cancel</Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setOpen(false)}
+              disabled={pending}
+            >
+              Cancel
+            </Button>
             <Button type="submit" disabled={pending}>
-              {pending ? <><Loader2 className="mr-2 size-4 animate-spin" />Saving…</> : "Create"}
+              {pending ? (
+                <>
+                  <Loader2 className="mr-2 size-4 animate-spin" />
+                  Saving…
+                </>
+              ) : (
+                "Create"
+              )}
             </Button>
           </DialogFooter>
         </form>

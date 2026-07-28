@@ -70,7 +70,12 @@ const groups = [
       { title: "Cost Centres", url: "/accounting/cost-centers", icon: Layers },
       { title: "Fixed Assets", url: "/accounting/fixed-assets", icon: Building2 },
       { title: "Exchange Rates", url: "/accounting/exchange-rates", icon: ArrowLeftRight },
-      { title: "Period Close", url: "/accounting/period-close", icon: Lock, capability: "period:close" },
+      {
+        title: "Period Close",
+        url: "/accounting/period-close",
+        icon: Lock,
+        capability: "period:close",
+      },
       { title: "P&L Statement", url: "/accounting/pnl", icon: TrendingUp },
       { title: "Balance Sheet", url: "/accounting/balance-sheet", icon: ClipboardList },
       { title: "GST Returns", url: "/accounting/gst", icon: Receipt },
@@ -106,7 +111,12 @@ const groups = [
       { title: "CRM", url: "/crm", icon: ShoppingCart, capability: "contact:manage" },
       { title: "Point of Sale", url: "/pos", icon: Store, capability: "document:create" },
       { title: "Banking", url: "/banking", icon: Landmark },
-      { title: "Import Statement", url: "/banking/import", icon: Upload, capability: "bank:reconcile" },
+      {
+        title: "Import Statement",
+        url: "/banking/import",
+        icon: Upload,
+        capability: "bank:reconcile",
+      },
       {
         title: "Connect Accounts",
         url: "/banking/connect",

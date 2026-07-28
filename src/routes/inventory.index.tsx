@@ -1,6 +1,13 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
-import { Plus, QrCode, Package as PackageIcon, MoreHorizontal, Pencil, Archive } from "lucide-react";
+import {
+  Plus,
+  QrCode,
+  Package as PackageIcon,
+  MoreHorizontal,
+  Pencil,
+  Archive,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/AppShell";
@@ -269,7 +276,12 @@ function ItemRowActions({ item }: { item: Item }) {
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" className="h-8 w-8" aria-label={`Actions for ${item.name}`}>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            aria-label={`Actions for ${item.name}`}
+          >
             <MoreHorizontal className="h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>

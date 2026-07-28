@@ -188,7 +188,12 @@ export const noteStatusEnum = pgEnum("note_status", ["draft", "posted", "void"])
 export const depreciationMethodEnum = pgEnum("depreciation_method", ["straight_line"]);
 export const assetStatusEnum = pgEnum("asset_status", ["active", "disposed"]);
 
-export const recurringFrequencyEnum = pgEnum("recurring_frequency", ["weekly", "monthly", "quarterly", "yearly"]);
+export const recurringFrequencyEnum = pgEnum("recurring_frequency", [
+  "weekly",
+  "monthly",
+  "quarterly",
+  "yearly",
+]);
 export const recurringStatusEnum = pgEnum("recurring_status", ["active", "paused", "ended"]);
 
 export const bankTxnStatusEnum = pgEnum("bank_txn_status", [
@@ -1189,7 +1194,9 @@ export const fixedAssets = pgTable(
       .references(() => accounts.id),
     acquisitionDate: date("acquisition_date").notNull(),
     costMinor: money("cost_minor").notNull(),
-    salvageValueMinor: money("salvage_value_minor").notNull().default(sql`0`),
+    salvageValueMinor: money("salvage_value_minor")
+      .notNull()
+      .default(sql`0`),
     usefulLifeMonths: integer("useful_life_months").notNull(),
     method: depreciationMethodEnum("method").notNull().default("straight_line"),
     status: assetStatusEnum("status").notNull().default("active"),
@@ -1261,7 +1268,14 @@ export const budgets = pgTable(
     amountMinor: money("amount_minor").notNull(),
     ...timestamps,
   },
-  (t) => [uniqueIndex("budget_org_acct_cc_year_idx").on(t.orgId, t.accountId, t.costCenterId, t.fiscalYear)],
+  (t) => [
+    uniqueIndex("budget_org_acct_cc_year_idx").on(
+      t.orgId,
+      t.accountId,
+      t.costCenterId,
+      t.fiscalYear,
+    ),
+  ],
 );
 
 /* ────────────────────────────────────────────────────────────────────────────

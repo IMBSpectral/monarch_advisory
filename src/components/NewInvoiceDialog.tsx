@@ -294,7 +294,11 @@ export function NewInvoiceDialog({
                 <input
                   type="checkbox"
                   checked={postNow}
-                  onChange={(e) => setPostNow(e.target.checked)}
+                  onChange={(e) => {
+                    setPostNow(e.target.checked);
+                    // Don't leave a stale validation error contradicting the new mode.
+                    setError(null);
+                  }}
                   className="size-4"
                 />
                 Issue immediately (posts to the ledger)

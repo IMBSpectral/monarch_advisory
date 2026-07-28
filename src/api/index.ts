@@ -48,7 +48,7 @@ import {
   getTrialBalance,
 } from "@/server/reports";
 import { getStockSummary } from "@/server/inventory";
-import { listContacts, listItems } from "@/server/entities";
+import { createAccount, createBankAccount, listContacts, listItems } from "@/server/entities";
 import { createInvoice, postInvoice, recordCustomerPayment } from "@/server/invoicing";
 import { assertCan } from "@/server/auth";
 import { currentOrgId, requireAuth, requirePermission } from "@/server/session";
@@ -647,6 +647,61 @@ export const fetchChartOfAccounts = createServerFn({ method: "GET" }).handler(as
     };
   });
 });
+
+const ACCOUNT_TYPES = ["asset", "liability", "equity", "income", "expense"] as const;
+const ACCOUNT_SUBTYPES = [
+  "cash_and_bank",
+  "accounts_receivable",
+  "inventory",
+  "other_current_asset",
+  "fixed_asset",
+  "accumulated_depreciation",
+  "other_asset",
+  "accounts_payable",
+  "credit_card",
+  "tax_payable",
+  "other_current_liability",
+  "long_term_liability",
+  "goods_received_clearing",
+  "equity",
+  "retained_earnings",
+  "operating_revenue",
+  "other_income",
+  "cost_of_goods_sold",
+  "operating_expense",
+  "depreciation_expense",
+  "other_expense",
+] as const;
+
+export const createAccountFn = createServerFn({ method: "POST" })
+  .validator(
+    z.object({
+      name: z.string().trim().min(1).max(120),
+      code: z.string().trim().max(20).optional(),
+      type: z.enum(ACCOUNT_TYPES),
+      subtype: z.enum(ACCOUNT_SUBTYPES),
+      parentId: z.string().uuid().nullish(),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const principal = await requirePermission("settings:manage");
+    return createAccount(principal.orgId, data, principal.userId);
+  });
+
+export const createBankAccountFn = createServerFn({ method: "POST" })
+  .validator(
+    z.object({
+      name: z.string().trim().min(1).max(120),
+      kind: z.enum(["bank", "cash"]),
+      institutionName: z.string().trim().max(120).nullish(),
+      accountNumberMasked: z.string().trim().max(40).nullish(),
+      ifscCode: z.string().trim().max(20).nullish(),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const principal = await requirePermission("bank:manage");
+    return createBankAccount(principal.orgId, data, principal.userId);
+  });
 
 export const fetchJournal = createServerFn({ method: "GET" })
   .validator(z.object({ limit: z.number().max(200).optional() }).optional())

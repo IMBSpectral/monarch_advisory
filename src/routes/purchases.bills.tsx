@@ -402,7 +402,10 @@ function NewBillDialog({
                 <input
                   type="checkbox"
                   checked={postNow}
-                  onChange={(e) => setPostNow(e.target.checked)}
+                  onChange={(e) => {
+                    setPostNow(e.target.checked);
+                    setError(null);
+                  }}
                   className="size-4"
                 />
                 Approve &amp; post to the ledger now

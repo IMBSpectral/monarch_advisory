@@ -16,12 +16,15 @@
 import { and, asc, desc, eq, ilike, isNull, or, sql } from "drizzle-orm";
 import { withOrg } from "@/db/client";
 import {
+  accounts,
   bankAccounts,
   bankTransactions,
   contacts,
   items,
   taxRates,
   type Address,
+  type AccountSubtype,
+  type AccountType,
 } from "@/db/schema";
 import { LedgerError, writeAudit } from "./ledger";
 
@@ -318,6 +321,141 @@ export async function listBankAccounts(orgId: string) {
       .where(and(eq(bankAccounts.orgId, orgId), isNull(bankAccounts.deletedAt)))
       .orderBy(asc(bankAccounts.name)),
   );
+}
+
+export type NewAccountInput = {
+  name: string;
+  code?: string;
+  type: AccountType;
+  subtype: AccountSubtype;
+  parentId?: string | null;
+};
+
+/**
+ * Create a ledger account. The code is unique per org, so if the caller doesn't
+ * supply one we mint the next free code in that account type's number band
+ * (assets 1xxx, liabilities 2xxx, …). Group flag is false: hand-made accounts
+ * are postable leaves, not headers.
+ */
+export async function createAccount(
+  orgId: string,
+  input: NewAccountInput,
+  userId?: string | null,
+): Promise<{ id: string; code: string }> {
+  const name = input.name.trim();
+  if (!name) throw new LedgerError("An account needs a name.", "ACCOUNT_NAME_REQUIRED");
+
+  const band: Record<AccountType, number> = {
+    asset: 1000,
+    liability: 2000,
+    equity: 3000,
+    income: 4000,
+    expense: 5000,
+  };
+
+  return withOrg(orgId, async (tx) => {
+    let code = input.code?.trim();
+    if (code) {
+      const [clash] = await tx
+        .select({ id: accounts.id })
+        .from(accounts)
+        .where(and(eq(accounts.orgId, orgId), eq(accounts.code, code)))
+        .limit(1);
+      if (clash)
+        throw new LedgerError(`Account code ${code} is already in use.`, "ACCOUNT_CODE_TAKEN");
+    } else {
+      // Next free numeric code within this type's 1000-wide band.
+      const low = band[input.type];
+      const rows = await tx
+        .select({ code: accounts.code })
+        .from(accounts)
+        .where(eq(accounts.orgId, orgId));
+      const used = new Set(rows.map((r) => r.code));
+      let n = low + 10;
+      while (used.has(String(n)) && n < low + 999) n += 1;
+      code = String(n);
+    }
+
+    const [row] = await tx
+      .insert(accounts)
+      .values({
+        orgId,
+        code,
+        name,
+        type: input.type,
+        subtype: input.subtype,
+        parentId: input.parentId ?? null,
+        isGroup: false,
+        isSystem: false,
+      })
+      .returning({ id: accounts.id });
+
+    await writeAudit(tx, {
+      orgId,
+      userId: userId ?? null,
+      action: "account.created",
+      entityType: "account",
+      entityId: row.id,
+      after: { code, name, type: input.type, subtype: input.subtype },
+    });
+
+    return { id: row.id, code: code! };
+  });
+}
+
+export type NewBankAccountInput = {
+  name: string;
+  kind: "bank" | "cash";
+  institutionName?: string | null;
+  accountNumberMasked?: string | null;
+  ifscCode?: string | null;
+};
+
+/**
+ * Add a bank/cash account manually — no live feed required. Creates the backing
+ * cash_and_bank LEDGER account (so payments, POS and vouchers can settle into
+ * it) AND the bank_accounts row that /banking lists. The two are linked, which
+ * is exactly how the seeded accounts are wired.
+ */
+export async function createBankAccount(
+  orgId: string,
+  input: NewBankAccountInput,
+  userId?: string | null,
+): Promise<{ bankAccountId: string; ledgerAccountId: string }> {
+  const name = input.name.trim();
+  if (!name) throw new LedgerError("A bank/cash account needs a name.", "BANK_NAME_REQUIRED");
+
+  const ledger = await createAccount(
+    orgId,
+    { name, type: "asset", subtype: "cash_and_bank" },
+    userId,
+  );
+
+  return withOrg(orgId, async (tx) => {
+    const [row] = await tx
+      .insert(bankAccounts)
+      .values({
+        orgId,
+        accountId: ledger.id,
+        name,
+        institutionName: input.kind === "cash" ? "Cash" : (input.institutionName ?? null),
+        accountNumberMasked: input.accountNumberMasked ?? null,
+        ifscCode: input.ifscCode ?? null,
+        currency: "INR",
+      })
+      .returning({ id: bankAccounts.id });
+
+    await writeAudit(tx, {
+      orgId,
+      userId: userId ?? null,
+      action: "bank_account.created",
+      entityType: "bank_account",
+      entityId: row.id,
+      after: { name, kind: input.kind, ledgerCode: ledger.code },
+    });
+
+    return { bankAccountId: row.id, ledgerAccountId: ledger.id };
+  });
 }
 
 /**

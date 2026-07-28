@@ -1,4 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { useState } from "react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
@@ -12,8 +13,20 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Landmark, Sparkles } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Landmark, Plus, Sparkles } from "lucide-react";
+import { EntityFormDialog } from "@/components/EntityFormDialog";
+import { useCan } from "@/components/SessionContext";
 import { fetchBankSummary, fetchBankTransactions } from "@/api/entities";
+import { createBankAccountFn } from "@/api";
 import { formatMinor } from "@/lib/money";
 
 export const Route = createFileRoute("/banking/")({
@@ -48,6 +61,7 @@ function statusBadge(status: string) {
 
 function Banking() {
   const { accounts, txns } = Route.useLoaderData();
+  const canManage = useCan("bank:manage");
 
   function autoReconcile() {
     toast.info(
@@ -57,12 +71,16 @@ function Banking() {
 
   return (
     <>
-      <PageHeader title="Banking" subtitle="Accounts, transactions, and AI reconciliation" />
+      <PageHeader
+        title="Banking"
+        subtitle="Accounts, transactions, and AI reconciliation"
+        actions={canManage ? <AddBankAccountButton /> : undefined}
+      />
       <div className="p-6 space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {accounts.length === 0 ? (
             <Card className="p-8 text-center text-sm text-muted-foreground md:col-span-3">
-              No bank accounts yet. Connect a feed to see balances here.
+              No bank accounts yet. Add one manually, or connect a feed to see balances here.
             </Card>
           ) : (
             accounts.map((a) => (
@@ -148,5 +166,96 @@ function Banking() {
         </Card>
       </div>
     </>
+  );
+}
+
+/**
+ * "Add account" — create a bank or cash account manually, no live feed needed.
+ * This creates both the backing cash_and_bank ledger account (so payments, POS
+ * and vouchers can settle into it) and the bank_accounts row shown above.
+ * Gated on bank:manage.
+ */
+function AddBankAccountButton() {
+  const router = useRouter();
+  const [name, setName] = useState("");
+  const [kind, setKind] = useState<"bank" | "cash">("bank");
+  const [institution, setInstitution] = useState("");
+  const [number, setNumber] = useState("");
+
+  return (
+    <EntityFormDialog
+      trigger={
+        <Button size="sm" className="bg-gradient-brand text-white">
+          <Plus className="mr-1.5 h-4 w-4" />
+          Add account
+        </Button>
+      }
+      title="Add bank or cash account"
+      description="Track a bank or cash account manually — no live feed required."
+      submitLabel="Add account"
+      successMessage="Account added"
+      onSubmit={async () => {
+        if (!name.trim()) throw new Error("An account name is required.");
+        await createBankAccountFn({
+          data: {
+            name: name.trim(),
+            kind,
+            institutionName: kind === "bank" ? institution.trim() || null : null,
+            accountNumberMasked: kind === "bank" ? number.trim() || null : null,
+          },
+        });
+        setName("");
+        setKind("bank");
+        setInstitution("");
+        setNumber("");
+        await router.invalidate();
+      }}
+    >
+      <div className="grid grid-cols-2 gap-4">
+        <div className="grid gap-2">
+          <Label htmlFor="ba-kind">Type</Label>
+          <Select value={kind} onValueChange={(v) => setKind(v as "bank" | "cash")}>
+            <SelectTrigger id="ba-kind">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="bank">Bank</SelectItem>
+              <SelectItem value="cash">Cash</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="ba-name">Name</Label>
+          <Input
+            id="ba-name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder={kind === "cash" ? "Petty Cash" : "HDFC Current"}
+          />
+        </div>
+      </div>
+      {kind === "bank" && (
+        <div className="grid grid-cols-2 gap-4">
+          <div className="grid gap-2">
+            <Label htmlFor="ba-inst">Bank name</Label>
+            <Input
+              id="ba-inst"
+              value={institution}
+              onChange={(e) => setInstitution(e.target.value)}
+              placeholder="HDFC Bank"
+            />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="ba-num">Account number</Label>
+            <Input
+              id="ba-num"
+              value={number}
+              onChange={(e) => setNumber(e.target.value)}
+              placeholder="••••8821"
+            />
+          </div>
+        </div>
+      )}
+    </EntityFormDialog>
   );
 }

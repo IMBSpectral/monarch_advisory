@@ -387,6 +387,45 @@ test.describe("signup — a brand-new org gets working books", () => {
     await waitToast(page, /Invoice INV-0001 created and issued/);
     expect(errors).toEqual([]);
   });
+
+  test("a fresh org has GST rates and can create accounts + bank accounts", async ({ page }) => {
+    const stamp = `${Date.now()}`.slice(-9);
+    await page.goto("/signup");
+    await page.getByLabel("Organization name").fill(`E2E Setup ${stamp} Ltd`);
+    await page.getByLabel("Your name").fill("E2E Founder");
+    await page.getByLabel("Email").fill(`e2e-setup-${stamp}@example.test`);
+    await page.getByLabel("Password").fill(`signup-secret-${stamp}`);
+    await page.getByRole("button", { name: "Create organization" }).click();
+    await page.waitForURL("http://localhost:8082/");
+
+    // GST rates are provisioned, so a line's tax dropdown offers real rates.
+    await page.goto("/sales/customers");
+    await openDialog(page, "New Customer");
+    await dialog(page).getByLabel("Name").fill("Taxable Client");
+    await dialog(page).getByRole("button", { name: "Create customer" }).click();
+    await waitToast(page, /Customer created/);
+    await page.goto("/sales/invoices");
+    await openDialog(page, "New Invoice");
+    await dialog(page).getByRole("combobox").filter({ hasText: "No tax" }).click();
+    await expect(page.getByRole("option", { name: "GST 18%", exact: true })).toBeVisible();
+    await page.keyboard.press("Escape");
+
+    // Admin can add a ledger account…
+    await page.goto("/accounting/coa");
+    await openDialog(page, "New account");
+    await dialog(page).getByLabel("Name").fill("Consulting Income");
+    await dialog(page).getByRole("button", { name: "Create account" }).click();
+    await waitToast(page, /Account created/);
+    await expect(page.getByText("Consulting Income")).toBeVisible();
+
+    // …and add a bank/cash account manually (no feed).
+    await page.goto("/banking");
+    await openDialog(page, "Add account");
+    await dialog(page).getByLabel("Name", { exact: true }).fill("Main Current");
+    await dialog(page).getByRole("button", { name: "Add account" }).click();
+    await waitToast(page, /Account added/);
+    await expect(page.getByText("Main Current")).toBeVisible();
+  });
 });
 
 test.describe("reports — custom date range", () => {

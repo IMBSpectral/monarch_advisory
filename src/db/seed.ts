@@ -35,6 +35,7 @@ import { createFixedAsset, runDepreciation } from "@/server/assets";
 import { createRecurringTemplate } from "@/server/recurring";
 import { warehouses, costCenters, budgets, exchangeRates } from "./schema";
 import { hashPassword } from "@/server/auth";
+import { ensureOrgProvisioned } from "@/server/provisioning";
 import { DEMO_LOGINS, DEMO_PASSWORD, SEEDED_ORG_NAME, SEEDED_OTHER_ORG_NAME } from "./fixtures";
 import {
   bankAccounts as mockBankAccounts,
@@ -435,8 +436,12 @@ async function main() {
   await db.insert(memberships).values({ orgId: otherOrg.id, userId: otherUser.id, role: "owner" });
 
   // The founder also sits on Sentinel's board (admin), so the consolidation
-  // report has more than one entity to roll up. Sentinel stays empty on purpose.
+  // report has more than one entity to roll up. Sentinel carries the default
+  // books (chart, sequences, tax rates, a bank account) but NO transactions —
+  // so it's a functional-but-empty tenant you can actually post into, not a
+  // dead org that errors on the first save.
   await db.insert(memberships).values({ orgId: otherOrg.id, userId: user.id, role: "admin" });
+  await ensureOrgProvisioned(db, otherOrg.id);
 
   /* ── Document sequences ─────────────────────────────────────────────────*/
 
@@ -679,7 +684,9 @@ async function main() {
       unitCostMinor: toPaise(it.cost),
     })),
   });
-  console.log(`  stock      ${mockItems.length} items opened, value ${opening.totalValueMinor / 100n} INR`);
+  console.log(
+    `  stock      ${mockItems.length} items opened, value ${opening.totalValueMinor / 100n} INR`,
+  );
 
   /* ── Bank accounts ──────────────────────────────────────────────────────*/
 
@@ -849,7 +856,12 @@ async function main() {
     exchangeRate: "86.5",
     userId: user.id,
     lines: [
-      { description: "Export consulting (USD)", quantity: "1", unitPriceMinor: toPaise(5_000), revenueAccountId: acct("4200") },
+      {
+        description: "Export consulting (USD)",
+        quantity: "1",
+        unitPriceMinor: toPaise(5_000),
+        revenueAccountId: acct("4200"),
+      },
     ],
   });
   await postInvoice({ orgId: org.id, invoiceId: usdInvoice.invoiceId, userId: user.id });
@@ -896,7 +908,14 @@ async function main() {
     expectedDate: "2026-07-26",
     userId: user.id,
     lines: [
-      { itemId: itemIdBySku.get("MON-LP-15")!, description: "UltraBook Pro 15", quantity: "5", unitPriceMinor: toPaise(mockItems.find((i) => i.sku === "MON-LP-15")!.price), taxRateId: gst18.id, accountId: acct("4100") },
+      {
+        itemId: itemIdBySku.get("MON-LP-15")!,
+        description: "UltraBook Pro 15",
+        quantity: "5",
+        unitPriceMinor: toPaise(mockItems.find((i) => i.sku === "MON-LP-15")!.price),
+        taxRateId: gst18.id,
+        accountId: acct("4100"),
+      },
     ],
   });
   await createPurchaseOrder({
@@ -906,7 +925,13 @@ async function main() {
     expectedDate: "2026-07-27",
     userId: user.id,
     lines: [
-      { itemId: itemIdBySku.get("MON-KB-01")!, description: "Monarch Mechanical Keyboard", quantity: "50", unitPriceMinor: toPaise(mockItems.find((i) => i.sku === "MON-KB-01")!.cost), taxRateId: gst18.id },
+      {
+        itemId: itemIdBySku.get("MON-KB-01")!,
+        description: "Monarch Mechanical Keyboard",
+        quantity: "50",
+        unitPriceMinor: toPaise(mockItems.find((i) => i.sku === "MON-KB-01")!.cost),
+        taxRateId: gst18.id,
+      },
     ],
   });
   console.log(`  vouchers   1 contra, 1 sales order, 1 purchase order`);
@@ -979,7 +1004,10 @@ async function main() {
     memo: "Salary disbursement — July 2026",
     userId: user.id,
     lines: [
-      debit(acct("5200"), payroll, { memo: "Salaries & wages July", costCenterId: ccByCode.get("ENG") }),
+      debit(acct("5200"), payroll, {
+        memo: "Salaries & wages July",
+        costCenterId: ccByCode.get("ENG"),
+      }),
       credit(acct("1110"), payroll, { memo: "Salary batch JUL-01" }),
     ],
   });
@@ -1030,7 +1058,9 @@ async function main() {
     userId: user.id,
   });
   const dep = await runDepreciation({ orgId: org.id, throughDate: "2026-07-01", userId: user.id });
-  console.log(`  assets     2 registered, depreciation ₹${dep.chargedMinor / 100n} (${dep.monthsPosted} charges)`);
+  console.log(
+    `  assets     2 registered, depreciation ₹${dep.chargedMinor / 100n} (${dep.monthsPosted} charges)`,
+  );
 
   /* ── A recurring invoice template (not yet generated) ───────────────────*/
 
@@ -1044,7 +1074,13 @@ async function main() {
     autoPost: true,
     userId: user.id,
     lines: [
-      { description: "Managed services retainer", quantity: "1", unitPriceMinor: toPaise(150_000), taxRateId: gst18.id, revenueAccountId: acct("4200") },
+      {
+        description: "Managed services retainer",
+        quantity: "1",
+        unitPriceMinor: toPaise(150_000),
+        taxRateId: gst18.id,
+        revenueAccountId: acct("4200"),
+      },
     ],
   });
   console.log(`  recurring  1 template`);
@@ -1055,8 +1091,9 @@ async function main() {
     console.log(`  ${login.email.padEnd(30)} ${login.role.padEnd(11)} ${login.org}`);
   }
   console.log(
-    "\n  Sentinel Foods has no data on purpose: sign in there and every screen\n" +
-      "  should be empty. Anything from IMB Labs showing up is a tenancy leak.\n",
+    "\n  Sentinel Foods has default books but no transactions on purpose: sign in\n" +
+      "  there and the transactional screens (invoices, bills, …) are empty, but you\n" +
+      "  can post into it. Anything from IMB Labs showing up is a tenancy leak.\n",
   );
 }
 

@@ -20,6 +20,7 @@
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { withOrg } from "@/db/client";
 import type { DbOrTx } from "@/db/client";
+import { applyRate, mulDivRound, parseQuantity, parseRate } from "@/lib/decimal";
 import {
   contacts,
   invoiceLines,
@@ -49,29 +50,6 @@ import {
   type IssueRequest,
   type StockOutPlan,
 } from "./inventory";
-
-/* ────────────────────────────────────────────────────────────────────────────
- * Money helpers
- * ──────────────────────────────────────────────────────────────────────────*/
-
-/**
- * Round-half-up division for bigint money. Used for tax and discount math.
- *
- * Tax on ₹1,234.56 at 18% is ₹222.2208 — someone must decide the final paisa.
- * We round half away from zero, which matches Indian GST rules and what every
- * accountant expects. Doing this in floating point is how invoices end up
- * off-by-one-paisa from the customer's own calculation.
- */
-function mulDivRound(amount: bigint, numerator: bigint, denominator: bigint): bigint {
-  const negative = amount < 0n;
-  const abs = negative ? -amount : amount;
-  const scaled = abs * numerator;
-  const quotient = scaled / denominator;
-  const remainder = scaled % denominator;
-  // Round half up: if remainder*2 >= denominator, bump.
-  const rounded = remainder * 2n >= denominator ? quotient + 1n : quotient;
-  return negative ? -rounded : rounded;
-}
 
 /* ────────────────────────────────────────────────────────────────────────────
  * Types
@@ -123,7 +101,7 @@ type ComputedLine = {
 function computeLine(line: DraftInvoiceLine, rateBps: number | null): ComputedLine {
   const qtyStr = line.quantity ?? "1";
   // Quantity is decimal; scale to 4dp integer to keep the math exact.
-  const qtyScaled = BigInt(Math.round(Number(qtyStr) * 10_000));
+  const qtyScaled = parseQuantity(qtyStr);
   if (qtyScaled <= 0n) {
     throw new LedgerError(
       `Line "${line.description}" has quantity ${qtyStr}; must be greater than zero.`,
@@ -219,17 +197,18 @@ export async function createInvoice(
     // nothing downstream reconverts, the A/R control account and the aging report
     // can never drift. The foreign total is kept only for display on the document.
     const invCurrency = input.currency ?? customer.currency ?? org.baseCurrency;
-    const rate = input.exchangeRate ? Number(input.exchangeRate) : 1;
-    // A foreign-currency invoice must carry a real exchange rate, or its amounts
-    // would silently be booked as base-currency (e.g. $100 posted as ₹100).
-    if (invCurrency !== org.baseCurrency && (!input.exchangeRate || rate <= 0)) {
+    const isForeign = invCurrency !== org.baseCurrency;
+    // A foreign-currency invoice must carry a real (positive) exchange rate, or
+    // its amounts would silently be booked as base-currency ($100 posted as ₹100).
+    if (isForeign && (!input.exchangeRate || parseRate(input.exchangeRate) <= 0n)) {
       throw new LedgerError(
         `Invoice currency ${invCurrency} differs from base ${org.baseCurrency}; an exchange rate is required.`,
         "EXCHANGE_RATE_REQUIRED",
       );
     }
-    const isForeign = invCurrency !== org.baseCurrency;
-    const toBase = (m: bigint) => (isForeign ? BigInt(Math.round(Number(m) * rate)) : m);
+    // Exact conversion — the rate is applied to bigint minor units, not floats.
+    const rateStr = input.exchangeRate ?? "1";
+    const toBase = (m: bigint) => (isForeign ? applyRate(m, rateStr) : m);
 
     const baseLines = computed.map((c) => ({
       ...c,

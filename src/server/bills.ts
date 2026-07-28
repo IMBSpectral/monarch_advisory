@@ -21,6 +21,7 @@
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { withOrg } from "@/db/client";
 import type { DbOrTx } from "@/db/client";
+import { mulDivRound, parseQuantity } from "@/lib/decimal";
 import {
   billLines,
   bills,
@@ -48,29 +49,6 @@ import {
   receiveStock,
   reverseDocumentStock,
 } from "./inventory";
-
-/* ────────────────────────────────────────────────────────────────────────────
- * Money helpers
- * ──────────────────────────────────────────────────────────────────────────*/
-
-/**
- * Round-half-up division for bigint money. Used for tax and discount math.
- *
- * Tax on ₹1,234.56 at 18% is ₹222.2208 — someone must decide the final paisa.
- * We round half away from zero, which matches Indian GST rules and what every
- * accountant expects. Doing this in floating point is how bills end up
- * off-by-one-paisa from the vendor's own calculation.
- */
-function mulDivRound(amount: bigint, numerator: bigint, denominator: bigint): bigint {
-  const negative = amount < 0n;
-  const abs = negative ? -amount : amount;
-  const scaled = abs * numerator;
-  const quotient = scaled / denominator;
-  const remainder = scaled % denominator;
-  // Round half up: if remainder*2 >= denominator, bump.
-  const rounded = remainder * 2n >= denominator ? quotient + 1n : quotient;
-  return negative ? -rounded : rounded;
-}
 
 /* ────────────────────────────────────────────────────────────────────────────
  * Types
@@ -122,8 +100,8 @@ type ComputedLine = {
  */
 function computeLine(line: DraftBillLine, rateBps: number | null): ComputedLine {
   const qtyStr = line.quantity ?? "1";
-  // Quantity is decimal; scale to 4dp integer to keep the math exact.
-  const qtyScaled = BigInt(Math.round(Number(qtyStr) * 10_000));
+  // Quantity is decimal; scale to a 4dp integer by exact string parsing.
+  const qtyScaled = parseQuantity(qtyStr);
   if (qtyScaled <= 0n) {
     throw new LedgerError(
       `Line "${line.description}" has quantity ${qtyStr}; must be greater than zero.`,

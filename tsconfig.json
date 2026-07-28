@@ -1,5 +1,8 @@
 {
   "include": ["src/**/*.ts", "src/**/*.tsx", "vite.config.ts", "eslint.config.js"],
+  // *.test.ts run under `bun test` (which provides the bun:test types at
+  // runtime); tsc type-checks the production code, not the test harness.
+  "exclude": ["src/**/*.test.ts"],
   "compilerOptions": {
     "target": "ES2022",
     "jsx": "react-jsx",

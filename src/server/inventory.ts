@@ -21,6 +21,7 @@
 import { and, eq, sql } from "drizzle-orm";
 import { withOrg } from "@/db/client";
 import type { DbOrTx } from "@/db/client";
+import { parseQuantity } from "@/lib/decimal";
 import { itemStockLevels, items, stockLayers, stockMovements, warehouses } from "@/db/schema";
 import {
   LedgerError,
@@ -39,11 +40,13 @@ const QTY_SCALE = 10_000n;
 
 /** Parse a decimal quantity string ("2.5") to a scaled bigint (25000 = 2.5). */
 export function toScaledQty(qty: string): bigint {
-  const n = Number(qty);
-  if (!Number.isFinite(n)) {
+  try {
+    // Exact string parse — no float, so 0.0001 and very large quantities are
+    // preserved rather than rounded by IEEE-754.
+    return parseQuantity(qty);
+  } catch {
     throw new LedgerError(`Invalid quantity "${qty}".`, "INVALID_QUANTITY");
   }
-  return BigInt(Math.round(n * 10_000));
 }
 
 /** Render a scaled bigint quantity back to a 4dp decimal string. */

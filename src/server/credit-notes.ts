@@ -20,6 +20,7 @@
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { withOrg } from "@/db/client";
 import type { DbOrTx } from "@/db/client";
+import { mulDivRound, parseQuantity } from "@/lib/decimal";
 import {
   bills,
   contacts,
@@ -52,20 +53,6 @@ import {
   type IssueRequest,
 } from "./inventory";
 
-/* ────────────────────────────────────────────────────────────────────────────
- * Shared line math (same rounding as invoicing/bills)
- * ──────────────────────────────────────────────────────────────────────────*/
-
-function mulDivRound(amount: bigint, numerator: bigint, denominator: bigint): bigint {
-  const negative = amount < 0n;
-  const abs = negative ? -amount : amount;
-  const scaled = abs * numerator;
-  const quotient = scaled / denominator;
-  const remainder = scaled % denominator;
-  const rounded = remainder * 2n >= denominator ? quotient + 1n : quotient;
-  return negative ? -rounded : rounded;
-}
-
 type DraftNoteLine = {
   itemId?: string | null;
   description: string;
@@ -85,7 +72,7 @@ type ComputedLine = {
 
 function computeLine(line: DraftNoteLine, rateBps: number | null): ComputedLine {
   const qtyStr = line.quantity ?? "1";
-  const qtyScaled = BigInt(Math.round(Number(qtyStr) * 10_000));
+  const qtyScaled = parseQuantity(qtyStr);
   if (qtyScaled <= 0n) {
     throw new LedgerError(
       `Line "${line.description}" has quantity ${qtyStr}; must be positive.`,
@@ -313,7 +300,7 @@ export async function postCreditNote(args: {
         const tracked = await getTrackedItem(tx, args.orgId, l.itemId);
         if (!tracked) continue;
         const avg = await getCurrentAvgCost(tx, args.orgId, l.itemId, warehouseId);
-        const qtyScaled = BigInt(Math.round(Number(l.quantity) * 10_000));
+        const qtyScaled = parseQuantity(l.quantity);
         const value = mulDivRound(avg, qtyScaled, 10_000n);
         if (value <= 0n) continue;
         const invAcc =

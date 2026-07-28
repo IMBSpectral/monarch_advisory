@@ -42,15 +42,7 @@ import {
 } from "./inventory";
 import { createBill, postBill } from "./bills";
 import { createInvoice, postInvoice } from "./invoicing";
-
-function mulDivRound(amount: bigint, numerator: bigint, denominator: bigint): bigint {
-  const abs = amount < 0n ? -amount : amount;
-  const scaled = abs * numerator;
-  const q = scaled / denominator;
-  const r = scaled % denominator;
-  const rounded = r * 2n >= denominator ? q + 1n : q;
-  return amount < 0n ? -rounded : rounded;
-}
+import { mulDivRound, parseQuantity } from "@/lib/decimal";
 
 /* ────────────────────────────────────────────────────────────────────────────
  * Goods receipts (GRN)
@@ -78,8 +70,7 @@ export async function createGoodsReceipt(input: {
 
   return withOrg(input.orgId, async (tx) => {
     const total = input.lines.reduce(
-      (a, l) =>
-        a + mulDivRound(l.unitCostMinor, BigInt(Math.round(Number(l.quantity) * 10_000)), 10_000n),
+      (a, l) => a + mulDivRound(l.unitCostMinor, parseQuantity(l.quantity), 10_000n),
       0n,
     );
     const grnNumber = await claimNextNumber(tx, input.orgId, "grn");
@@ -141,11 +132,7 @@ export async function postGoodsReceipt(args: {
     const receipts = lines.map((l) => ({
       itemId: l.itemId,
       quantity: l.quantity,
-      valueMinor: mulDivRound(
-        l.unitCostMinor,
-        BigInt(Math.round(Number(l.quantity) * 10_000)),
-        10_000n,
-      ),
+      valueMinor: mulDivRound(l.unitCostMinor, parseQuantity(l.quantity), 10_000n),
     }));
     const total = receipts.reduce((a, r) => a + r.valueMinor, 0n);
 

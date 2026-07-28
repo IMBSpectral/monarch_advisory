@@ -24,15 +24,7 @@ import {
 import { LedgerError, claimNextNumber, writeAudit } from "./ledger";
 import { createInvoice, postInvoice } from "./invoicing";
 import { createBill, postBill } from "./bills";
-
-function mulDivRound(amount: bigint, numerator: bigint, denominator: bigint): bigint {
-  const abs = amount < 0n ? -amount : amount;
-  const scaled = abs * numerator;
-  const q = scaled / denominator;
-  const r = scaled % denominator;
-  const rounded = r * 2n >= denominator ? q + 1n : q;
-  return amount < 0n ? -rounded : rounded;
-}
+import { mulDivRound, parseQuantity } from "@/lib/decimal";
 
 type OrderLine = {
   itemId?: string | null;
@@ -58,7 +50,7 @@ async function totalsFor(tx: DbOrTx, orgId: string, lines: OrderLine[]) {
   let subtotal = 0n;
   let tax = 0n;
   for (const l of lines) {
-    const qtyScaled = BigInt(Math.round(Number(l.quantity ?? "1") * 10_000));
+    const qtyScaled = parseQuantity(l.quantity ?? "1");
     if (qtyScaled <= 0n)
       throw new LedgerError(
         `Line "${l.description}" quantity must be positive.`,

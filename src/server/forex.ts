@@ -13,6 +13,7 @@ import { and, desc, eq, isNotNull, lte, sql } from "drizzle-orm";
 import { withOrg } from "@/db/client";
 import type { DbOrTx } from "@/db/client";
 import { accounts, exchangeRates, organizations } from "@/db/schema";
+import { applyRate } from "@/lib/decimal";
 import {
   LedgerError,
   credit,
@@ -30,8 +31,8 @@ export async function latestRate(
   currency: string,
   base: string,
   asOf: string,
-): Promise<number | null> {
-  if (currency === base) return 1;
+): Promise<string | null> {
+  if (currency === base) return "1";
   const [row] = await tx
     .select({ rate: exchangeRates.rateToBase })
     .from(exchangeRates)
@@ -44,7 +45,8 @@ export async function latestRate(
     )
     .orderBy(desc(exchangeRates.asOfDate))
     .limit(1);
-  return row ? Number(row.rate) : null;
+  // Return the raw decimal string so the caller can apply it exactly (no float).
+  return row ? String(row.rate) : null;
 }
 
 export type ForexExposureRow = {
@@ -97,9 +99,9 @@ export async function getForexExposure(
     const baseCarrying = BigInt(balRows[0].base_bal);
     const foreignBalance = BigInt(balRows[0].fx_bal);
     const rate = await latestRate(tx, orgId, a.currency, base, asOf);
-    // revalued base = foreign minor units × rate (minor→minor, so rate applies directly)
-    const revalued =
-      rate === null ? baseCarrying : BigInt(Math.round(Number(foreignBalance) * rate));
+    // revalued base = foreign minor units × rate (minor→minor). Applied exactly
+    // from the decimal-string rate, not through a float.
+    const revalued = rate === null ? baseCarrying : applyRate(foreignBalance, rate);
     rows.push({
       accountId: a.id,
       code: a.code,
@@ -107,7 +109,9 @@ export async function getForexExposure(
       currency: a.currency,
       foreignBalanceMinor: foreignBalance,
       baseCarryingMinor: baseCarrying,
-      rate,
+      // Display-only (report shows rate.toFixed(4)); the exact revaluation above
+      // uses the decimal string, not this number.
+      rate: rate === null ? null : Number(rate),
       revaluedMinor: revalued,
       unrealizedMinor: revalued - baseCarrying,
     });

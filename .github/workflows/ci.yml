@@ -23,6 +23,8 @@ jobs:
         run: bunx tsc --noEmit
       - name: Lint (includes the "no @/data/mock in routes" fixture guard)
         run: bun run lint
+      - name: Unit tests (exact-decimal arithmetic, …)
+        run: bun test src/
       - name: Build
         run: bun run build
 

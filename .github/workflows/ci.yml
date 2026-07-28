@@ -100,8 +100,18 @@ jobs:
       - run: bun run db:seed
       - name: Install Playwright browser
         run: bunx playwright install --with-deps chromium
-      - name: Run e2e (Playwright starts the dev server on :8082)
-        run: bunx playwright test
+      - name: Warm the dev server, then run e2e
+        # Start the dev server and compile the main routes up front, so the very
+        # first login inside Playwright doesn't pay the cold Vite/server-fn
+        # compile cost (which flakes auth.setup on a cold CI runner). Playwright's
+        # webServer has reuseExistingServer, so it picks up this warm instance.
+        run: |
+          bun run dev -- --port 8082 --strictPort > /tmp/dev.log 2>&1 &
+          for i in $(seq 1 90); do curl -sf http://localhost:8082/login -o /dev/null && break; sleep 2; done
+          curl -s http://localhost:8082/login -o /dev/null || true
+          curl -s http://localhost:8082/ -o /dev/null || true
+          sleep 10
+          bunx playwright test
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

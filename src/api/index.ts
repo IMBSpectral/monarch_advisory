@@ -245,13 +245,8 @@ export const fetchGstSummary = createServerFn({ method: "GET" })
 
     return withOrg(orgId, async (tx) => {
       const g = await getGstSummary(tx, orgId, data?.from ?? period.from, data?.to ?? period.to);
-      // Intra-state presentational split (place of supply isn't modelled): halve
-      // the total into CGST/SGST, giving the odd paisa to CGST so the two sum
-      // back exactly. IGST (inter-state) can't be derived, so it stays zero.
-      const half = (v: bigint) => {
-        const cgst = (v + 1n) / 2n;
-        return { cgst: cgst.toString(), sgst: (v - cgst).toString() };
-      };
+      // No CGST/SGST/IGST split: place of supply isn't modelled, so fabricating
+      // one would be an incorrect tax figure. Report the real ledger totals only.
       return {
         from: g.from,
         to: g.to,
@@ -259,8 +254,6 @@ export const fetchGstSummary = createServerFn({ method: "GET" })
         outputTax: g.outputTaxMinor.toString(),
         inputTax: g.inputTaxMinor.toString(),
         netPayable: g.netPayableMinor.toString(),
-        output: half(g.outputTaxMinor),
-        input: half(g.inputTaxMinor),
       };
     });
   });

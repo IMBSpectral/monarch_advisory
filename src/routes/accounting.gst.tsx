@@ -66,14 +66,12 @@ function GST() {
     { name: "GSTR-9", desc: "Annual return", due: "31 Dec", status: "Pending", amount: "0" },
   ];
 
+  // Real ledger totals only — no CGST/SGST/IGST split, because place of supply
+  // isn't modelled and inventing components would be an incorrect tax figure.
   const summary: { l: string; v: string; hi?: boolean }[] = [
     { l: "Taxable outward supplies", v: g.taxableSales },
-    { l: "Output CGST", v: g.output.cgst },
-    { l: "Output SGST", v: g.output.sgst },
-    { l: "Output IGST", v: "0" },
-    { l: "Input CGST (ITC)", v: g.input.cgst },
-    { l: "Input SGST (ITC)", v: g.input.sgst },
-    { l: "Input IGST (ITC)", v: "0" },
+    { l: "Output GST (on sales)", v: g.outputTax },
+    { l: "Input tax credit (ITC on purchases)", v: g.inputTax },
     { l: "Net GST Payable", v: g.netPayable, hi: true },
   ];
 
@@ -104,10 +102,15 @@ function GST() {
         <div className="flex items-start gap-2 rounded-lg border border-brand/20 bg-brand/5 px-4 py-3 text-sm">
           <Info className="mt-0.5 h-4 w-4 flex-shrink-0 text-brand" />
           <p className="text-muted-foreground">
-            Figures are computed from your ledger for the selected period. The CGST/SGST split
-            assumes <span className="font-medium text-foreground">intra-state</span> supply (place
-            of supply isn't tracked), and statutory filing requires a GSP (GST Suvidha Provider)
-            integration — use Download to export the summary for your CA or filing tool.
+            <span className="font-medium text-foreground">
+              Indicative summary — not statutory-grade.
+            </span>{" "}
+            Figures are real ledger totals for the period (output tax on sales, input tax credit on
+            purchases), but this is <span className="font-medium text-foreground">not</span> a GST
+            computation: CGST/SGST/IGST classification, place of supply, reverse charge and ITC
+            eligibility aren't modelled yet, so no component split is shown. Statutory filing needs
+            a tax-determination engine and a GSP integration — use Download to hand the totals to
+            your CA.
           </p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

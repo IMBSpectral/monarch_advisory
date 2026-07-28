@@ -38,10 +38,16 @@ import {
   debit,
   postJournalEntry,
   resolveControlAccount,
+  resolveInputTaxAccount,
   writeAudit,
   type PostingLine,
 } from "./ledger";
-import { getDefaultWarehouseId, getTrackedItem, receiveStock, reverseDocumentStock } from "./inventory";
+import {
+  getDefaultWarehouseId,
+  getTrackedItem,
+  receiveStock,
+  reverseDocumentStock,
+} from "./inventory";
 
 /* ────────────────────────────────────────────────────────────────────────────
  * Money helpers
@@ -329,11 +335,17 @@ export async function postBill(args: {
         // clears the GRNI liability rather than debiting Inventory again, and it
         // does not receive stock a second time.
         const grniAccount = await resolveControlAccount(tx, args.orgId, "goods_received_clearing");
-        debitByAccount.set(grniAccount, (debitByAccount.get(grniAccount) ?? 0n) + line.lineTotalMinor);
+        debitByAccount.set(
+          grniAccount,
+          (debitByAccount.get(grniAccount) ?? 0n) + line.lineTotalMinor,
+        );
       } else if (tracked) {
         const invAccount =
           tracked.inventoryAccountId ?? (await resolveControlAccount(tx, args.orgId, "inventory"));
-        debitByAccount.set(invAccount, (debitByAccount.get(invAccount) ?? 0n) + line.lineTotalMinor);
+        debitByAccount.set(
+          invAccount,
+          (debitByAccount.get(invAccount) ?? 0n) + line.lineTotalMinor,
+        );
         if (!warehouseId) warehouseId = await getDefaultWarehouseId(tx, args.orgId);
         receipts.push({
           itemId: tracked.id,
@@ -360,14 +372,12 @@ export async function postBill(args: {
       );
     }
 
-    // Input tax paid is a reclaimable asset, not part of the expense.
-    // NOTE: input credit ideally debits a dedicated input-tax asset account,
-    // but this chart of accounts does not yet separate input tax from the
-    // output-tax liability — both share the single "tax_payable" control
-    // account. Debiting it here nets against output tax, which is the correct
-    // GST settlement position even if it isn't the cleanest presentation.
+    // Input tax paid is a reclaimable asset (ITC), posted to the dedicated
+    // Input GST Credit account — NOT the output-tax liability. Keeping the two
+    // apart is what lets input and output tax reconcile to GST returns
+    // independently.
     if (bill.taxTotalMinor > 0n) {
-      const taxAccountId = await resolveControlAccount(tx, args.orgId, "tax_payable");
+      const taxAccountId = await resolveInputTaxAccount(tx, args.orgId);
       postings.push(
         debit(taxAccountId, bill.taxTotalMinor, {
           contactId: bill.contactId,

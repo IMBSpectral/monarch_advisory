@@ -508,6 +508,19 @@ export async function resolveControlAccount(
   return account.id;
 }
 
+/**
+ * The dedicated INPUT-tax (ITC) account — reclaimable GST paid on purchases, an
+ * ASSET. Kept separate from the output-tax liability (tax_payable) so input and
+ * output tax reconcile independently, which shared-account netting cannot do.
+ *
+ * It resolves to the org's system `other_current_asset` account (the "Input GST
+ * Credit" account, code 1140), which is the only leaf account of that subtype
+ * carrying `isSystem`.
+ */
+export async function resolveInputTaxAccount(tx: DbOrTx, orgId: string): Promise<string> {
+  return resolveControlAccount(tx, orgId, "other_current_asset");
+}
+
 /* ────────────────────────────────────────────────────────────────────────────
  * Audit
  * ──────────────────────────────────────────────────────────────────────────*/

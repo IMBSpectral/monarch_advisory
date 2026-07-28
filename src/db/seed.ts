@@ -131,10 +131,14 @@ const CHART: AccountSeed[] = [
     parent: "1100",
   },
   {
+    // isSystem so the posting engine resolves it as the dedicated INPUT-tax
+    // (ITC) account — input tax stays an asset here, separate from the
+    // output-tax liability (2200 GST Payable).
     code: "1140",
     name: "Input GST Credit",
     type: "asset",
     subtype: "other_current_asset",
+    isSystem: true,
     parent: "1100",
   },
   {

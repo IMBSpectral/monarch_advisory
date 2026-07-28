@@ -85,10 +85,15 @@ export const DEFAULT_CHART: AccountDef[] = [
     parent: "1100",
   },
   {
+    // isSystem so the posting engine resolves it as the dedicated INPUT-tax
+    // (ITC) account, keeping input tax an ASSET rather than netting it into the
+    // output-tax liability (2200). It's the only leaf system other_current_asset,
+    // so resolveControlAccount("other_current_asset") returns it uniquely.
     code: "1140",
     name: "Input GST Credit",
     type: "asset",
     subtype: "other_current_asset",
+    isSystem: true,
     parent: "1100",
   },
   {

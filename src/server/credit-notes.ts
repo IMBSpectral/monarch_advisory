@@ -38,6 +38,7 @@ import {
   debit,
   postJournalEntry,
   resolveControlAccount,
+  resolveInputTaxAccount,
   writeAudit,
   type PostingLine,
 } from "./ledger";
@@ -75,25 +76,41 @@ type DraftNoteLine = {
   accountId?: string | null; // revenue (credit note) or expense (debit note)
 };
 
-type ComputedLine = { quantity: string; lineTotalMinor: bigint; taxAmountMinor: bigint; taxRateId: string | null };
+type ComputedLine = {
+  quantity: string;
+  lineTotalMinor: bigint;
+  taxAmountMinor: bigint;
+  taxRateId: string | null;
+};
 
 function computeLine(line: DraftNoteLine, rateBps: number | null): ComputedLine {
   const qtyStr = line.quantity ?? "1";
   const qtyScaled = BigInt(Math.round(Number(qtyStr) * 10_000));
   if (qtyScaled <= 0n) {
-    throw new LedgerError(`Line "${line.description}" has quantity ${qtyStr}; must be positive.`, "INVALID_QUANTITY");
+    throw new LedgerError(
+      `Line "${line.description}" has quantity ${qtyStr}; must be positive.`,
+      "INVALID_QUANTITY",
+    );
   }
   const gross = mulDivRound(line.unitPriceMinor, qtyScaled, 10_000n);
   const discount = mulDivRound(gross, BigInt(line.discountBps ?? 0), 10_000n);
   const net = gross - discount;
   const tax = rateBps ? mulDivRound(net, BigInt(rateBps), 10_000n) : 0n;
-  return { quantity: qtyStr, lineTotalMinor: net, taxAmountMinor: tax, taxRateId: line.taxRateId ?? null };
+  return {
+    quantity: qtyStr,
+    lineTotalMinor: net,
+    taxAmountMinor: tax,
+    taxRateId: line.taxRateId ?? null,
+  };
 }
 
 async function resolveRates(tx: DbOrTx, orgId: string, lines: DraftNoteLine[]) {
   const ids = [...new Set(lines.map((l) => l.taxRateId).filter(Boolean))] as string[];
   const rates = ids.length
-    ? await tx.select().from(taxRates).where(and(eq(taxRates.orgId, orgId), inArray(taxRates.id, ids)))
+    ? await tx
+        .select()
+        .from(taxRates)
+        .where(and(eq(taxRates.orgId, orgId), inArray(taxRates.id, ids)))
     : [];
   return new Map(rates.map((r) => [r.id, r]));
 }
@@ -118,14 +135,16 @@ export type CreateCreditNoteInput = {
 export async function createCreditNote(
   input: CreateCreditNoteInput,
 ): Promise<{ creditNoteId: string; creditNoteNumber: string; totalMinor: bigint }> {
-  if (input.lines.length === 0) throw new LedgerError("A credit note needs at least one line.", "NO_LINES");
+  if (input.lines.length === 0)
+    throw new LedgerError("A credit note needs at least one line.", "NO_LINES");
 
   return withOrg(input.orgId, async (tx) => {
     const [customer] = await tx
       .select()
       .from(contacts)
       .where(and(eq(contacts.id, input.contactId), eq(contacts.orgId, input.orgId)));
-    if (!customer) throw new LedgerError(`Customer ${input.contactId} not found.`, "CONTACT_NOT_FOUND");
+    if (!customer)
+      throw new LedgerError(`Customer ${input.contactId} not found.`, "CONTACT_NOT_FOUND");
 
     const [org] = await tx
       .select({ baseCurrency: organizations.baseCurrency })
@@ -133,11 +152,17 @@ export async function createCreditNote(
       .where(eq(organizations.id, input.orgId));
 
     const rateById = await resolveRates(tx, input.orgId, input.lines);
-    const computed = input.lines.map((l) => computeLine(l, l.taxRateId ? (rateById.get(l.taxRateId)?.rateBps ?? null) : null));
+    const computed = input.lines.map((l) =>
+      computeLine(l, l.taxRateId ? (rateById.get(l.taxRateId)?.rateBps ?? null) : null),
+    );
     const subtotal = computed.reduce((a, c) => a + c.lineTotalMinor, 0n);
     const taxTotal = computed.reduce((a, c) => a + c.taxAmountMinor, 0n);
     const total = subtotal + taxTotal;
-    if (total <= 0n) throw new LedgerError(`Credit note total is ${total}; must be positive.`, "NON_POSITIVE_TOTAL");
+    if (total <= 0n)
+      throw new LedgerError(
+        `Credit note total is ${total}; must be positive.`,
+        "NON_POSITIVE_TOTAL",
+      );
 
     const number = await claimNextNumber(tx, input.orgId, "credit_note");
     const [note] = await tx
@@ -200,9 +225,13 @@ export async function postCreditNote(args: {
       .select()
       .from(creditNotes)
       .where(and(eq(creditNotes.id, args.creditNoteId), eq(creditNotes.orgId, args.orgId)));
-    if (!note) throw new LedgerError(`Credit note ${args.creditNoteId} not found.`, "CREDIT_NOTE_NOT_FOUND");
+    if (!note)
+      throw new LedgerError(`Credit note ${args.creditNoteId} not found.`, "CREDIT_NOTE_NOT_FOUND");
     if (note.status !== "draft")
-      throw new LedgerError(`Credit note ${note.creditNoteNumber} is ${note.status}; only drafts post.`, "NOTE_NOT_DRAFT");
+      throw new LedgerError(
+        `Credit note ${note.creditNoteNumber} is ${note.status}; only drafts post.`,
+        "NOTE_NOT_DRAFT",
+      );
 
     // The credit must not exceed what's still open on the invoice.
     const [inv] = await tx
@@ -225,7 +254,10 @@ export async function postCreditNote(args: {
       );
     }
 
-    const lines = await tx.select().from(creditNoteLines).where(eq(creditNoteLines.creditNoteId, note.id));
+    const lines = await tx
+      .select()
+      .from(creditNoteLines)
+      .where(eq(creditNoteLines.creditNoteId, note.id));
     const arAccountId = await resolveControlAccount(tx, args.orgId, "accounts_receivable");
     const postings: PostingLine[] = [];
 
@@ -241,20 +273,37 @@ export async function postCreditNote(args: {
     // Reverse revenue per line.
     const revByAccount = new Map<string, bigint>();
     for (const l of lines) {
-      const acc = l.revenueAccountId ?? (await resolveControlAccount(tx, args.orgId, "operating_revenue"));
+      const acc =
+        l.revenueAccountId ?? (await resolveControlAccount(tx, args.orgId, "operating_revenue"));
       revByAccount.set(acc, (revByAccount.get(acc) ?? 0n) + l.lineTotalMinor);
     }
     for (const [acc, amt] of revByAccount) {
-      if (amt > 0n) postings.push(debit(acc, amt, { contactId: note.contactId, memo: `Revenue reversal — ${note.creditNoteNumber}` }));
+      if (amt > 0n)
+        postings.push(
+          debit(acc, amt, {
+            contactId: note.contactId,
+            memo: `Revenue reversal — ${note.creditNoteNumber}`,
+          }),
+        );
     }
     // Reverse output tax.
     if (note.taxTotalMinor > 0n) {
       const taxAcc = await resolveControlAccount(tx, args.orgId, "tax_payable");
-      postings.push(debit(taxAcc, note.taxTotalMinor, { contactId: note.contactId, memo: `Output tax reversal — ${note.creditNoteNumber}` }));
+      postings.push(
+        debit(taxAcc, note.taxTotalMinor, {
+          contactId: note.contactId,
+          memo: `Output tax reversal — ${note.creditNoteNumber}`,
+        }),
+      );
     }
 
     // Restock returned goods at current average cost, reversing COGS.
-    const restockPlan: Array<{ itemId: string; warehouseId: string; quantity: string; valueMinor: bigint }> = [];
+    const restockPlan: Array<{
+      itemId: string;
+      warehouseId: string;
+      quantity: string;
+      valueMinor: bigint;
+    }> = [];
     if (note.restock) {
       const warehouseId = await getDefaultWarehouseId(tx, args.orgId);
       const invByAccount = new Map<string, bigint>();
@@ -267,14 +316,24 @@ export async function postCreditNote(args: {
         const qtyScaled = BigInt(Math.round(Number(l.quantity) * 10_000));
         const value = mulDivRound(avg, qtyScaled, 10_000n);
         if (value <= 0n) continue;
-        const invAcc = tracked.inventoryAccountId ?? (await resolveControlAccount(tx, args.orgId, "inventory"));
-        const cogsAcc = tracked.cogsAccountId ?? (await resolveControlAccount(tx, args.orgId, "cost_of_goods_sold"));
+        const invAcc =
+          tracked.inventoryAccountId ?? (await resolveControlAccount(tx, args.orgId, "inventory"));
+        const cogsAcc =
+          tracked.cogsAccountId ??
+          (await resolveControlAccount(tx, args.orgId, "cost_of_goods_sold"));
         invByAccount.set(invAcc, (invByAccount.get(invAcc) ?? 0n) + value);
         cogsByAccount.set(cogsAcc, (cogsByAccount.get(cogsAcc) ?? 0n) + value);
-        restockPlan.push({ itemId: l.itemId, warehouseId, quantity: l.quantity, valueMinor: value });
+        restockPlan.push({
+          itemId: l.itemId,
+          warehouseId,
+          quantity: l.quantity,
+          valueMinor: value,
+        });
       }
-      for (const [acc, amt] of invByAccount) postings.push(debit(acc, amt, { memo: `Stock returned — ${note.creditNoteNumber}` }));
-      for (const [acc, amt] of cogsByAccount) postings.push(credit(acc, amt, { memo: `COGS reversal — ${note.creditNoteNumber}` }));
+      for (const [acc, amt] of invByAccount)
+        postings.push(debit(acc, amt, { memo: `Stock returned — ${note.creditNoteNumber}` }));
+      for (const [acc, amt] of cogsByAccount)
+        postings.push(credit(acc, amt, { memo: `COGS reversal — ${note.creditNoteNumber}` }));
     }
 
     const entry = await postJournalEntry(
@@ -349,7 +408,8 @@ export type CreateDebitNoteInput = {
 export async function createDebitNote(
   input: CreateDebitNoteInput,
 ): Promise<{ debitNoteId: string; debitNoteNumber: string }> {
-  if (input.lines.length === 0) throw new LedgerError("A debit note needs at least one line.", "NO_LINES");
+  if (input.lines.length === 0)
+    throw new LedgerError("A debit note needs at least one line.", "NO_LINES");
 
   return withOrg(input.orgId, async (tx) => {
     const [vendor] = await tx
@@ -366,7 +426,9 @@ export async function createDebitNote(
     // Draft amounts are provisional; postDebitNote finalises tracked lines at
     // weighted-average cost. Store the supplied figures for the draft view.
     const rateById = await resolveRates(tx, input.orgId, input.lines);
-    const computed = input.lines.map((l) => computeLine(l, l.taxRateId ? (rateById.get(l.taxRateId)?.rateBps ?? null) : null));
+    const computed = input.lines.map((l) =>
+      computeLine(l, l.taxRateId ? (rateById.get(l.taxRateId)?.rateBps ?? null) : null),
+    );
 
     const number = await claimNextNumber(tx, input.orgId, "debit_note");
     const [note] = await tx
@@ -419,15 +481,26 @@ export async function postDebitNote(args: {
       .select()
       .from(debitNotes)
       .where(and(eq(debitNotes.id, args.debitNoteId), eq(debitNotes.orgId, args.orgId)));
-    if (!note) throw new LedgerError(`Debit note ${args.debitNoteId} not found.`, "DEBIT_NOTE_NOT_FOUND");
+    if (!note)
+      throw new LedgerError(`Debit note ${args.debitNoteId} not found.`, "DEBIT_NOTE_NOT_FOUND");
     if (note.status !== "draft")
-      throw new LedgerError(`Debit note ${note.debitNoteNumber} is ${note.status}; only drafts post.`, "NOTE_NOT_DRAFT");
+      throw new LedgerError(
+        `Debit note ${note.debitNoteNumber} is ${note.status}; only drafts post.`,
+        "NOTE_NOT_DRAFT",
+      );
 
-    const lines = await tx.select().from(debitNoteLines).where(eq(debitNoteLines.debitNoteId, note.id));
+    const lines = await tx
+      .select()
+      .from(debitNoteLines)
+      .where(eq(debitNoteLines.debitNoteId, note.id));
     const rateById = await resolveRates(
       tx,
       args.orgId,
-      lines.map((l) => ({ description: l.description, unitPriceMinor: l.unitPriceMinor, taxRateId: l.taxRateId })),
+      lines.map((l) => ({
+        description: l.description,
+        unitPriceMinor: l.unitPriceMinor,
+        taxRateId: l.taxRateId,
+      })),
     );
 
     const warehouseId = await getDefaultWarehouseId(tx, args.orgId);
@@ -447,10 +520,16 @@ export async function postDebitNote(args: {
         trackedInvAccount.push(
           tracked.inventoryAccountId ?? (await resolveControlAccount(tx, args.orgId, "inventory")),
         );
-        issueRequests.push({ itemId: l.itemId!, quantity: l.quantity, memo: `Return — ${note.debitNoteNumber}` });
+        issueRequests.push({
+          itemId: l.itemId!,
+          quantity: l.quantity,
+          memo: `Return — ${note.debitNoteNumber}`,
+        });
       }
     }
-    const plan = issueRequests.length ? await planStockOut(tx, args.orgId, warehouseId, issueRequests) : null;
+    const plan = issueRequests.length
+      ? await planStockOut(tx, args.orgId, warehouseId, issueRequests)
+      : null;
 
     let subtotal = 0n;
     let taxTotal = 0n;
@@ -465,7 +544,8 @@ export async function postDebitNote(args: {
         t++;
       } else {
         lineValue = l.lineTotalMinor;
-        const acc = l.expenseAccountId ?? (await resolveControlAccount(tx, args.orgId, "operating_expense"));
+        const acc =
+          l.expenseAccountId ?? (await resolveControlAccount(tx, args.orgId, "operating_expense"));
         creditByAccount.set(acc, (creditByAccount.get(acc) ?? 0n) + lineValue);
       }
       const rate = l.taxRateId ? rateById.get(l.taxRateId) : null;
@@ -506,11 +586,21 @@ export async function postDebitNote(args: {
       }),
     );
     for (const [acc, amt] of creditByAccount) {
-      if (amt > 0n) postings.push(credit(acc, amt, { contactId: note.contactId, memo: `Return — ${note.debitNoteNumber}` }));
+      if (amt > 0n)
+        postings.push(
+          credit(acc, amt, { contactId: note.contactId, memo: `Return — ${note.debitNoteNumber}` }),
+        );
     }
     if (taxTotal > 0n) {
-      const taxAcc = await resolveControlAccount(tx, args.orgId, "tax_payable");
-      postings.push(credit(taxAcc, taxTotal, { contactId: note.contactId, memo: `Input tax reversal — ${note.debitNoteNumber}` }));
+      // Debit note = purchase return, so it reverses reclaimed INPUT tax (ITC),
+      // crediting the Input GST Credit asset — not the output-tax liability.
+      const taxAcc = await resolveInputTaxAccount(tx, args.orgId);
+      postings.push(
+        credit(taxAcc, taxTotal, {
+          contactId: note.contactId,
+          memo: `Input tax reversal — ${note.debitNoteNumber}`,
+        }),
+      );
     }
 
     const entry = await postJournalEntry(

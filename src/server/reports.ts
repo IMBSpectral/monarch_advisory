@@ -362,14 +362,20 @@ export type GstSummary = {
 /**
  * GST for a period, derived from the ledger — not a stored figure.
  *
- * This chart of accounts keeps a single "GST Payable" control account: sales
- * CREDIT it (output tax) and purchases DEBIT it (reclaimable input tax / ITC).
- * So the two sides are recoverable from that one account by the sign of each
- * movement in the window. Only the *system* tax_payable account is GST — TDS
- * Payable shares the subtype but is excluded by `is_system`.
+ * Output and input tax now live in SEPARATE accounts: sales credit the system
+ * `tax_payable` account (GST Payable, output-tax liability) and purchases debit
+ * the system `other_current_asset` account (Input GST Credit / ITC, an asset).
+ * We read each as a NET balance for the period — the net of the output account
+ * is output tax, the net of the input account is ITC — which stays correct even
+ * if a reclassification entry touches an account, unlike sign-splitting a single
+ * shared account. TDS Payable shares the tax_payable subtype but is excluded by
+ * `is_system`.
  *
- * The model does not track place of supply, so there is no CGST/SGST/IGST split
- * here; the presentation layer notes the intra-state assumption it makes.
+ * This is a ledger summary, NOT a statutory GST computation: place of supply,
+ * CGST/SGST/IGST classification, reverse charge and ITC eligibility are not
+ * modelled, so the report must not present a component split. See F-01/F-03 in
+ * the audit backlog for the tax-determination engine that would make it filing
+ * grade.
  */
 export async function getGstSummary(
   tx: DbOrTx,
@@ -379,16 +385,18 @@ export async function getGstSummary(
 ): Promise<GstSummary> {
   const [taxRow] = (await tx.execute(sql`
     select
-      coalesce(-sum(jl.amount_minor) filter (where jl.amount_minor < 0), 0) as output_tax,
-      coalesce( sum(jl.amount_minor) filter (where jl.amount_minor > 0), 0) as input_tax
+      -- Net credit of the output-tax liability = output tax collected.
+      coalesce(-sum(jl.amount_minor) filter (where a.subtype = 'tax_payable' and a.is_system), 0) as output_tax,
+      -- Net debit of the input-tax asset = ITC availed.
+      coalesce( sum(jl.amount_minor) filter (where a.subtype = 'other_current_asset' and a.is_system), 0) as input_tax
     from journal_lines jl
     join journal_entries je on je.id = jl.entry_id
     join accounts a         on a.id = jl.account_id
     where jl.org_id = ${orgId}
       and ${POSTED}
       and je.entry_date between ${from} and ${to}
-      and a.subtype = 'tax_payable'
       and a.is_system = true
+      and a.subtype in ('tax_payable', 'other_current_asset')
   `)) as unknown as Row[];
 
   const [salesRow] = (await tx.execute(sql`

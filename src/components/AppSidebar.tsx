@@ -29,6 +29,7 @@ import {
   Repeat,
   Upload,
   ShieldCheck,
+  FileUp,
 } from "lucide-react";
 import {
   Sidebar,
@@ -148,7 +149,10 @@ const groups = [
   },
   {
     label: "System",
-    items: [{ title: "Settings", url: "/settings", icon: Settings, capability: "settings:manage" }],
+    items: [
+      { title: "Import Data", url: "/import", icon: FileUp, capability: "item:manage" },
+      { title: "Settings", url: "/settings", icon: Settings, capability: "settings:manage" },
+    ],
   },
 ];
 

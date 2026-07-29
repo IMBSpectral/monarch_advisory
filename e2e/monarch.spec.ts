@@ -87,6 +87,17 @@ test.describe("key figures are present and non-empty", () => {
     await expect(page.getByText("Nothing waiting for approval")).toBeVisible();
   });
 
+  test("CSV import screen parses a pasted file into a preview", async ({ page }) => {
+    await page.goto("/import");
+    await expect(page.getByRole("heading", { name: "Import Data" })).toBeVisible();
+    await page
+      .getByPlaceholder(/name,type,email/)
+      .fill("name,type,email\nPreview Co,customer,p@x.com");
+    // The parsed row shows up in the preview table.
+    await expect(page.getByRole("cell", { name: "Preview Co" })).toBeVisible();
+    await expect(page.getByRole("button", { name: /Import 1 row/ })).toBeVisible();
+  });
+
   test("forex exposure shows the USD account", async ({ page }) => {
     await page.goto("/reports/forex");
     await expect(page.getByText("SVB USD Account").first()).toBeVisible();

@@ -17,6 +17,7 @@ import { Route as SalesIndexRouteImport } from './routes/sales.index'
 import { Route as ReportsIndexRouteImport } from './routes/reports.index'
 import { Route as PosIndexRouteImport } from './routes/pos.index'
 import { Route as InventoryIndexRouteImport } from './routes/inventory.index'
+import { Route as ImportIndexRouteImport } from './routes/import.index'
 import { Route as CrmIndexRouteImport } from './routes/crm.index'
 import { Route as BankingIndexRouteImport } from './routes/banking.index'
 import { Route as AutomationIndexRouteImport } from './routes/automation.index'
@@ -99,6 +100,11 @@ const PosIndexRoute = PosIndexRouteImport.update({
 const InventoryIndexRoute = InventoryIndexRouteImport.update({
   id: '/inventory/',
   path: '/inventory/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ImportIndexRoute = ImportIndexRouteImport.update({
+  id: '/import/',
+  path: '/import/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CrmIndexRoute = CrmIndexRouteImport.update({
@@ -362,6 +368,7 @@ export interface FileRoutesByFullPath {
   '/automation/': typeof AutomationIndexRoute
   '/banking/': typeof BankingIndexRoute
   '/crm/': typeof CrmIndexRoute
+  '/import/': typeof ImportIndexRoute
   '/inventory/': typeof InventoryIndexRoute
   '/pos/': typeof PosIndexRoute
   '/reports/': typeof ReportsIndexRoute
@@ -415,6 +422,7 @@ export interface FileRoutesByTo {
   '/automation': typeof AutomationIndexRoute
   '/banking': typeof BankingIndexRoute
   '/crm': typeof CrmIndexRoute
+  '/import': typeof ImportIndexRoute
   '/inventory': typeof InventoryIndexRoute
   '/pos': typeof PosIndexRoute
   '/reports': typeof ReportsIndexRoute
@@ -469,6 +477,7 @@ export interface FileRoutesById {
   '/automation/': typeof AutomationIndexRoute
   '/banking/': typeof BankingIndexRoute
   '/crm/': typeof CrmIndexRoute
+  '/import/': typeof ImportIndexRoute
   '/inventory/': typeof InventoryIndexRoute
   '/pos/': typeof PosIndexRoute
   '/reports/': typeof ReportsIndexRoute
@@ -524,6 +533,7 @@ export interface FileRouteTypes {
     | '/automation/'
     | '/banking/'
     | '/crm/'
+    | '/import/'
     | '/inventory/'
     | '/pos/'
     | '/reports/'
@@ -577,6 +587,7 @@ export interface FileRouteTypes {
     | '/automation'
     | '/banking'
     | '/crm'
+    | '/import'
     | '/inventory'
     | '/pos'
     | '/reports'
@@ -630,6 +641,7 @@ export interface FileRouteTypes {
     | '/automation/'
     | '/banking/'
     | '/crm/'
+    | '/import/'
     | '/inventory/'
     | '/pos/'
     | '/reports/'
@@ -684,6 +696,7 @@ export interface RootRouteChildren {
   AutomationIndexRoute: typeof AutomationIndexRoute
   BankingIndexRoute: typeof BankingIndexRoute
   CrmIndexRoute: typeof CrmIndexRoute
+  ImportIndexRoute: typeof ImportIndexRoute
   InventoryIndexRoute: typeof InventoryIndexRoute
   PosIndexRoute: typeof PosIndexRoute
   ReportsIndexRoute: typeof ReportsIndexRoute
@@ -749,6 +762,13 @@ declare module '@tanstack/react-router' {
       path: '/inventory'
       fullPath: '/inventory/'
       preLoaderRoute: typeof InventoryIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/import/': {
+      id: '/import/'
+      path: '/import'
+      fullPath: '/import/'
+      preLoaderRoute: typeof ImportIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/crm/': {
@@ -1100,6 +1120,7 @@ const rootRouteChildren: RootRouteChildren = {
   AutomationIndexRoute: AutomationIndexRoute,
   BankingIndexRoute: BankingIndexRoute,
   CrmIndexRoute: CrmIndexRoute,
+  ImportIndexRoute: ImportIndexRoute,
   InventoryIndexRoute: InventoryIndexRoute,
   PosIndexRoute: PosIndexRoute,
   ReportsIndexRoute: ReportsIndexRoute,

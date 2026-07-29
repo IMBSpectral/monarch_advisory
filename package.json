@@ -20,6 +20,7 @@
     "db:test:reconciliation": "MONARCH_DB_ROLE=admin bun --env-file=.env src/db/test-reconciliation.ts",
     "db:test:approvals": "MONARCH_DB_ROLE=admin bun --env-file=.env src/db/test-approvals.ts",
     "db:test:approval-queue": "MONARCH_DB_ROLE=admin bun --env-file=.env src/db/test-approval-queue.ts",
+    "db:test:pos": "MONARCH_DB_ROLE=admin bun --env-file=.env src/db/test-pos.ts",
     "e2e": "playwright test"
   },
   "dependencies": {

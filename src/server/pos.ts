@@ -20,12 +20,16 @@
  * ON ATOMICITY. The three steps (create, post, settle) each open their own
  * transaction, because `createInvoice`/`postInvoice`/`recordCustomerPayment`
  * each establish their own tenant scope via `withOrg`. They are therefore
- * sequential, not a single atomic unit. Each step is individually valid and
- * leaves the books consistent, so the worst case is a posted-but-unpaid invoice
- * if the process dies between post and settle — which is a recoverable state (a
- * normal unpaid invoice), not a corrupt one. Making this a single transaction
- * would mean threading one `tx` through all three services; a worthwhile
- * refactor, noted here rather than pretended away.
+ * sequential, not a single atomic unit.
+ *
+ * The dominant failure at a till is an out-of-stock item, which used to surface
+ * only at `postInvoice` — after the draft invoice (and its number) already
+ * existed — leaving an orphaned draft. We now *pre-flight* stock before creating
+ * anything (see the checkout below), so a sale that can't be fulfilled fails
+ * cleanly and leaves nothing behind. The only residual window is a crash between
+ * post and settle, which leaves a normal unpaid invoice — a recoverable state,
+ * not a corrupt one. Full single-transaction checkout (threading one `tx` through
+ * all three services) would close even that; noted here rather than pretended away.
  */
 
 import { and, eq, isNull } from "drizzle-orm";
@@ -38,6 +42,12 @@ import {
   recordCustomerPayment,
   type DraftInvoiceLine,
 } from "./invoicing";
+import {
+  assertStockAvailable,
+  getDefaultWarehouseId,
+  getTrackedItem,
+  toScaledQty,
+} from "./inventory";
 
 const WALK_IN_NAME = "Walk-in Customer";
 
@@ -124,11 +134,30 @@ export async function posCheckout(input: {
     throw new LedgerError("The cart is empty.", "EMPTY_CART");
   }
 
-  // Resolve the two accounts the sale needs, in one scoped read.
-  const { contactId, cashAccountId } = await withOrg(input.orgId, async (tx) => ({
-    contactId: await resolveWalkInCustomer(tx, input.orgId),
-    cashAccountId: await resolveCashAccount(tx, input.orgId),
-  }));
+  // Resolve the accounts the sale needs AND pre-flight stock, in one scoped read.
+  // The pre-flight is what makes checkout effectively all-or-nothing for the
+  // common failure: if a tracked line is out of stock we throw here, before any
+  // invoice is created, so a doomed sale leaves no orphaned draft and burns no
+  // invoice number. (A crash between post and settle still leaves a normal unpaid
+  // invoice — a recoverable state, not a corrupt one; see the module note.)
+  const { contactId, cashAccountId } = await withOrg(input.orgId, async (tx) => {
+    const contactId = await resolveWalkInCustomer(tx, input.orgId);
+    const cashAccountId = await resolveCashAccount(tx, input.orgId);
+
+    const requirements: Array<{ itemId: string; qtyScaled: bigint }> = [];
+    for (const l of input.lines) {
+      if (!l.itemId) continue;
+      const tracked = await getTrackedItem(tx, input.orgId, l.itemId);
+      if (!tracked) continue;
+      requirements.push({ itemId: l.itemId, qtyScaled: toScaledQty(l.quantity ?? "1") });
+    }
+    if (requirements.length > 0) {
+      const warehouseId = await getDefaultWarehouseId(tx, input.orgId);
+      await assertStockAvailable(tx, input.orgId, warehouseId, requirements);
+    }
+
+    return { contactId, cashAccountId };
+  });
 
   const lines: DraftInvoiceLine[] = input.lines.map((l) => ({
     itemId: l.itemId ?? null,

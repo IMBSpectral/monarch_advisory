@@ -752,3 +752,43 @@ export async function getTrackedItem(
     cogsAccountId: item.cogsAccountId,
   };
 }
+
+/**
+ * Read-only pre-flight: throw INSUFFICIENT_STOCK if issuing these quantities from
+ * `warehouseId` would drive any item negative. Requirements are aggregated per
+ * item first (the same item can appear on several lines). This is a *pre-flight*,
+ * not the authoritative guard — `postMovement` still enforces availability under a
+ * row lock at post time — so a POS checkout can fail fast, before it creates a
+ * half-finished invoice, when the shelf is simply empty. Total on-hand is the
+ * right test for both weighted-average and FIFO (which only picks the layers).
+ */
+export async function assertStockAvailable(
+  tx: DbOrTx,
+  orgId: string,
+  warehouseId: string,
+  requirements: Array<{ itemId: string; qtyScaled: bigint }>,
+): Promise<void> {
+  const needed = new Map<string, bigint>();
+  for (const r of requirements) {
+    needed.set(r.itemId, (needed.get(r.itemId) ?? 0n) + r.qtyScaled);
+  }
+  for (const [itemId, need] of needed) {
+    if (need <= 0n) continue;
+    const rows = (await tx.execute(sql`
+      select on_hand_qty from item_stock_levels
+      where org_id = ${orgId} and item_id = ${itemId} and warehouse_id = ${warehouseId}
+    `)) as unknown as Array<{ on_hand_qty: string }>;
+    const available = rows[0] ? toScaledQty(rows[0].on_hand_qty) : 0n;
+    if (available < need) {
+      const [it] = await tx
+        .select({ name: items.name })
+        .from(items)
+        .where(and(eq(items.id, itemId), eq(items.orgId, orgId)));
+      throw new LedgerError(
+        `Insufficient stock for ${it?.name ?? itemId}: ${fromScaledQty(available)} on hand, ` +
+          `${fromScaledQty(need)} needed.`,
+        "INSUFFICIENT_STOCK",
+      );
+    }
+  }
+}

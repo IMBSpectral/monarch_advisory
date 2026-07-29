@@ -75,6 +75,8 @@ jobs:
         run: bun run db:test:approvals
       - name: Approval-queue (payments + journals) integration test
         run: bun run db:test:approval-queue
+      - name: POS checkout atomicity integration test
+        run: bun run db:test:pos
 
   # ── End-to-end: every module renders + the marquee flows post ──────────────
   e2e:

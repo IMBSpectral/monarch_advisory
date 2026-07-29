@@ -12,7 +12,7 @@ import { z } from "zod";
 import { withOrg } from "@/db/client";
 import { costCenters } from "@/db/schema";
 import { requireAuth, requirePermission } from "@/server/session";
-import { credit, debit, postJournalEntry } from "@/server/ledger";
+import { executeOrQueue } from "@/server/approval-queue";
 import { fiscalYearToDateISO } from "@/lib/fiscal";
 import { getCostCenterPnl, getBudgetVsActual } from "@/server/reports";
 
@@ -105,19 +105,21 @@ export const createManualEntryFn = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const p = await requirePermission("ledger:post");
-    const lines = data.lines.map((l) => {
-      const amt = BigInt(l.amountMinor);
-      const rest = { costCenterId: l.costCenterId ?? null, memo: l.memo };
-      return l.side === "debit" ? debit(l.accountId, amt, rest) : credit(l.accountId, amt, rest);
-    });
-    const entry = await postJournalEntry({
+    // The entry's size for the threshold = its total debits.
+    const debitTotal = data.lines
+      .filter((l) => l.side === "debit")
+      .reduce((s, l) => s + BigInt(l.amountMinor), 0n);
+    // Above the approval threshold this is queued for a second person instead of
+    // posting; below it, it posts immediately (as before).
+    const outcome = await executeOrQueue({
       orgId: p.orgId,
-      entryDate: data.entryDate,
-      source: "manual",
-      reference: data.reference ?? null,
-      memo: data.memo ?? null,
+      operation: "journal.manual",
+      payload: data,
+      amountMinor: debitTotal,
+      summary: `Manual journal${data.memo ? ` — ${data.memo}` : ""}`,
       userId: p.userId,
-      lines,
     });
-    return { entryNumber: entry.entryNumber };
+    return outcome.pending
+      ? { pending: true as const, pendingId: outcome.pendingId }
+      : { pending: false as const, entryNumber: outcome.ref };
   });

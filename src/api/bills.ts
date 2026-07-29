@@ -11,8 +11,9 @@ import { and, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 import { withOrg } from "@/db/client";
 import { bills, contacts } from "@/db/schema";
-import { createBill, postBill, recordVendorPayment, voidBill } from "@/server/bills";
+import { createBill, postBill, voidBill } from "@/server/bills";
 import { LedgerError } from "@/server/ledger";
+import { executeOrQueue } from "@/server/approval-queue";
 import { requireAuth, requirePermission } from "@/server/session";
 import { assertCan } from "@/server/auth";
 import { withIdempotency } from "@/server/idempotency";
@@ -166,24 +167,19 @@ export const payBillFn = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const principal = await requirePermission("payment:record");
-    const result = await recordVendorPayment({
+    // Above the approval threshold this is queued for a second person instead of
+    // posting; below it, it records immediately (as before).
+    const outcome = await executeOrQueue({
       orgId: principal.orgId,
-      contactId: data.contactId,
-      paymentDate: data.paymentDate,
+      operation: "payment.vendor",
+      payload: data,
       amountMinor: BigInt(data.amountMinor),
-      depositAccountId: data.paymentAccountId,
-      method: data.method,
-      referenceNumber: data.referenceNumber,
+      summary: `Vendor payment${data.referenceNumber ? ` · ${data.referenceNumber}` : ""}`,
       userId: principal.userId,
-      allocations: data.allocations.map((a) => ({
-        billId: a.billId,
-        amountMinor: BigInt(a.amountMinor),
-      })),
     });
-    return {
-      paymentId: result.paymentId,
-      paymentNumber: result.paymentNumber,
-    };
+    return outcome.pending
+      ? { pending: true as const, pendingId: outcome.pendingId }
+      : { pending: false as const, paymentNumber: outcome.ref };
   });
 
 export const voidBillFn = createServerFn({ method: "POST" })

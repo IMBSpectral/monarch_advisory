@@ -28,6 +28,7 @@ import {
   Building2,
   Repeat,
   Upload,
+  ShieldCheck,
 } from "lucide-react";
 import {
   Sidebar,
@@ -75,6 +76,12 @@ const groups = [
         url: "/accounting/period-close",
         icon: Lock,
         capability: "period:close",
+      },
+      {
+        title: "Approvals",
+        url: "/approvals",
+        icon: ShieldCheck,
+        capability: "payment:record",
       },
       { title: "P&L Statement", url: "/accounting/pnl", icon: TrendingUp },
       { title: "Balance Sheet", url: "/accounting/balance-sheet", icon: ClipboardList },

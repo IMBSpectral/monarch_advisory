@@ -334,7 +334,7 @@ function RecordPaymentDialog({
 
     setPending(true);
     try {
-      await recordPaymentFn({
+      const res = await recordPaymentFn({
         data: {
           contactId: invoice.customer.id,
           paymentDate,
@@ -347,7 +347,11 @@ function RecordPaymentDialog({
       });
       idem.renew();
       setOpen(false);
-      toast.success(`Payment recorded against ${invoice.invoiceNumber}`);
+      toast.success(
+        res.pending
+          ? "Payment submitted for approval — a different user must approve it before it posts"
+          : `Payment recorded against ${invoice.invoiceNumber}`,
+      );
       await onDone();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not record the payment.");

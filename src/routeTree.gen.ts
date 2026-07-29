@@ -20,6 +20,7 @@ import { Route as InventoryIndexRouteImport } from './routes/inventory.index'
 import { Route as CrmIndexRouteImport } from './routes/crm.index'
 import { Route as BankingIndexRouteImport } from './routes/banking.index'
 import { Route as AutomationIndexRouteImport } from './routes/automation.index'
+import { Route as ApprovalsIndexRouteImport } from './routes/approvals.index'
 import { Route as AiIndexRouteImport } from './routes/ai.index'
 import { Route as SalesRecurringRouteImport } from './routes/sales.recurring'
 import { Route as SalesOrdersRouteImport } from './routes/sales.orders'
@@ -113,6 +114,11 @@ const BankingIndexRoute = BankingIndexRouteImport.update({
 const AutomationIndexRoute = AutomationIndexRouteImport.update({
   id: '/automation/',
   path: '/automation/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApprovalsIndexRoute = ApprovalsIndexRouteImport.update({
+  id: '/approvals/',
+  path: '/approvals/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AiIndexRoute = AiIndexRouteImport.update({
@@ -352,6 +358,7 @@ export interface FileRoutesByFullPath {
   '/sales/orders': typeof SalesOrdersRoute
   '/sales/recurring': typeof SalesRecurringRoute
   '/ai/': typeof AiIndexRoute
+  '/approvals/': typeof ApprovalsIndexRoute
   '/automation/': typeof AutomationIndexRoute
   '/banking/': typeof BankingIndexRoute
   '/crm/': typeof CrmIndexRoute
@@ -404,6 +411,7 @@ export interface FileRoutesByTo {
   '/sales/orders': typeof SalesOrdersRoute
   '/sales/recurring': typeof SalesRecurringRoute
   '/ai': typeof AiIndexRoute
+  '/approvals': typeof ApprovalsIndexRoute
   '/automation': typeof AutomationIndexRoute
   '/banking': typeof BankingIndexRoute
   '/crm': typeof CrmIndexRoute
@@ -457,6 +465,7 @@ export interface FileRoutesById {
   '/sales/orders': typeof SalesOrdersRoute
   '/sales/recurring': typeof SalesRecurringRoute
   '/ai/': typeof AiIndexRoute
+  '/approvals/': typeof ApprovalsIndexRoute
   '/automation/': typeof AutomationIndexRoute
   '/banking/': typeof BankingIndexRoute
   '/crm/': typeof CrmIndexRoute
@@ -511,6 +520,7 @@ export interface FileRouteTypes {
     | '/sales/orders'
     | '/sales/recurring'
     | '/ai/'
+    | '/approvals/'
     | '/automation/'
     | '/banking/'
     | '/crm/'
@@ -563,6 +573,7 @@ export interface FileRouteTypes {
     | '/sales/orders'
     | '/sales/recurring'
     | '/ai'
+    | '/approvals'
     | '/automation'
     | '/banking'
     | '/crm'
@@ -615,6 +626,7 @@ export interface FileRouteTypes {
     | '/sales/orders'
     | '/sales/recurring'
     | '/ai/'
+    | '/approvals/'
     | '/automation/'
     | '/banking/'
     | '/crm/'
@@ -668,6 +680,7 @@ export interface RootRouteChildren {
   SalesOrdersRoute: typeof SalesOrdersRoute
   SalesRecurringRoute: typeof SalesRecurringRoute
   AiIndexRoute: typeof AiIndexRoute
+  ApprovalsIndexRoute: typeof ApprovalsIndexRoute
   AutomationIndexRoute: typeof AutomationIndexRoute
   BankingIndexRoute: typeof BankingIndexRoute
   CrmIndexRoute: typeof CrmIndexRoute
@@ -757,6 +770,13 @@ declare module '@tanstack/react-router' {
       path: '/automation'
       fullPath: '/automation/'
       preLoaderRoute: typeof AutomationIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/approvals/': {
+      id: '/approvals/'
+      path: '/approvals'
+      fullPath: '/approvals/'
+      preLoaderRoute: typeof ApprovalsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/ai/': {
@@ -1076,6 +1096,7 @@ const rootRouteChildren: RootRouteChildren = {
   SalesOrdersRoute: SalesOrdersRoute,
   SalesRecurringRoute: SalesRecurringRoute,
   AiIndexRoute: AiIndexRoute,
+  ApprovalsIndexRoute: ApprovalsIndexRoute,
   AutomationIndexRoute: AutomationIndexRoute,
   BankingIndexRoute: BankingIndexRoute,
   CrmIndexRoute: CrmIndexRoute,

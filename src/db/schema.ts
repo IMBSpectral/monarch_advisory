@@ -1802,6 +1802,44 @@ export const idempotencyKeys = pgTable(
   (t) => [uniqueIndex("idempotency_org_key_idx").on(t.orgId, t.idempotencyKey)],
 );
 
+/**
+ * Maker-checker approval queue for single-step postings (payments, manual
+ * journals) that have no draft lifecycle of their own. When a document is at or
+ * above the org's approval threshold, the *intent* to post it is stored here
+ * instead of executing; a different user approves, which replays the exact
+ * operation with their identity (so separation of duties holds), and the row is
+ * marked `approved` with the resulting document reference. Nothing touches the
+ * ledger until approval, so a pending item has no accounting effect.
+ */
+export const pendingApprovals = pgTable(
+  "pending_approvals",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orgId: uuid("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    /** "payment.customer" | "payment.vendor" | "journal.manual" */
+    operation: text("operation").notNull(),
+    /** The JSON-safe operation input, replayed verbatim on approval. */
+    payloadJson: jsonb("payload_json").notNull(),
+    /** The document value, for the queue display and the threshold context. */
+    amountMinor: money("amount_minor").notNull(),
+    /** Human summary, e.g. "Payment ₹5,000 to Acme Traders". */
+    summary: text("summary").notNull(),
+    /** pending | approved | rejected */
+    status: text("status").notNull().default("pending"),
+    requestedByUserId: uuid("requested_by_user_id").references(() => users.id),
+    decidedByUserId: uuid("decided_by_user_id").references(() => users.id),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+    /** Reason captured on rejection. */
+    reason: text("reason"),
+    /** The created document's number, once approved and executed. */
+    resultRef: text("result_ref"),
+    ...timestamps,
+  },
+  (t) => [index("pending_approval_org_status_idx").on(t.orgId, t.status)],
+);
+
 /* ────────────────────────────────────────────────────────────────────────────
  * Relations
  * ──────────────────────────────────────────────────────────────────────────*/

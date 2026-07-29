@@ -73,6 +73,8 @@ jobs:
         run: bun run db:test:reconciliation
       - name: Maker-checker approvals integration test
         run: bun run db:test:approvals
+      - name: Approval-queue (payments + journals) integration test
+        run: bun run db:test:approval-queue
 
   # ── End-to-end: every module renders + the marquee flows post ──────────────
   e2e:

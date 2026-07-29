@@ -81,6 +81,12 @@ test.describe("key figures are present and non-empty", () => {
     await expect(page.getByText("Book (GL) balance").first()).toBeVisible();
   });
 
+  test("approval queue renders (empty when approvals are off)", async ({ page }) => {
+    await page.goto("/approvals");
+    await expect(page.getByRole("heading", { name: "Approvals", exact: true })).toBeVisible();
+    await expect(page.getByText("Nothing waiting for approval")).toBeVisible();
+  });
+
   test("forex exposure shows the USD account", async ({ page }) => {
     await page.goto("/reports/forex");
     await expect(page.getByText("SVB USD Account").first()).toBeVisible();

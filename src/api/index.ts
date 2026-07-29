@@ -49,8 +49,9 @@ import {
 } from "@/server/reports";
 import { getStockSummary } from "@/server/inventory";
 import { createAccount, createBankAccount, listContacts, listItems } from "@/server/entities";
-import { createInvoice, postInvoice, recordCustomerPayment } from "@/server/invoicing";
+import { createInvoice, postInvoice } from "@/server/invoicing";
 import { LedgerError } from "@/server/ledger";
+import { executeOrQueue } from "@/server/approval-queue";
 import { assertCan } from "@/server/auth";
 import { currentOrgId, requireAuth, requirePermission } from "@/server/session";
 import { fiscalYearToDateISO } from "@/lib/fiscal";
@@ -885,23 +886,18 @@ export const recordPaymentFn = createServerFn({ method: "POST" })
     const principal = await requirePermission("payment:record");
     const orgId = principal.orgId;
     return withIdempotency(orgId, data.idempotencyKey, "payment.record", async () => {
-      const result = await recordCustomerPayment({
+      // Above the approval threshold this is queued for a second person instead
+      // of posting; below it, it records immediately (as before).
+      const outcome = await executeOrQueue({
         orgId,
-        contactId: data.contactId,
-        paymentDate: data.paymentDate,
+        operation: "payment.customer",
+        payload: data,
         amountMinor: BigInt(data.amountMinor),
-        depositAccountId: data.depositAccountId,
-        method: data.method,
-        referenceNumber: data.referenceNumber,
-        allocations: data.allocations.map((a) => ({
-          invoiceId: a.invoiceId,
-          amountMinor: BigInt(a.amountMinor),
-        })),
+        summary: `Customer payment${data.referenceNumber ? ` · ${data.referenceNumber}` : ""}`,
+        userId: principal.userId,
       });
-      return {
-        paymentId: result.paymentId,
-        paymentNumber: result.paymentNumber,
-        entryId: result.entryId,
-      };
+      return outcome.pending
+        ? { pending: true as const, pendingId: outcome.pendingId }
+        : { pending: false as const, paymentNumber: outcome.ref };
     });
   });

@@ -183,7 +183,11 @@ function NewEntry({ accounts, costCenters }: { accounts: Account[]; costCenters:
       });
       setOpen(false);
       reset();
-      toast.success(`Journal entry ${r.entryNumber} posted`);
+      toast.success(
+        r.pending
+          ? "Journal submitted for approval — a different user must approve it before it posts"
+          : `Journal entry ${r.entryNumber} posted`,
+      );
       await router.invalidate();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not post the entry.");

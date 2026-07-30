@@ -197,6 +197,16 @@ export const DEFAULT_CHART: AccountDef[] = [
     isSystem: true,
     parent: "2000",
   },
+  // Reverse-charge (RCM) GST self-assessed on purchases — a liability to the govt,
+  // kept apart from sales output so the return can distinguish them.
+  {
+    code: "2205",
+    name: "GST Payable (RCM)",
+    type: "liability",
+    subtype: "tax_payable",
+    isSystem: true,
+    parent: "2000",
+  },
   { code: "2210", name: "TDS Payable", type: "liability", subtype: "tax_payable", parent: "2000" },
 
   // Equity

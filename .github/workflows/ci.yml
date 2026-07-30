@@ -81,6 +81,8 @@ jobs:
         run: bun run db:test:import
       - name: GST place-of-supply split integration test
         run: bun run db:test:gst
+      - name: GST reverse-charge & ITC-eligibility integration test
+        run: bun run db:test:rcm
 
   # ── End-to-end: every module renders + the marquee flows post ──────────────
   e2e:

@@ -276,6 +276,7 @@ export const fetchGstSummary = createServerFn({ method: "GET" })
         outputCgst: g.outputCgstMinor.toString(),
         outputSgst: g.outputSgstMinor.toString(),
         outputIgst: g.outputIgstMinor.toString(),
+        rcmPayable: g.rcmPayableMinor.toString(),
         inputTax: g.inputTaxMinor.toString(),
         inputCgst: g.inputCgstMinor.toString(),
         inputSgst: g.inputSgstMinor.toString(),

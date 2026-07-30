@@ -74,6 +74,7 @@ function GST() {
     { l: "— Output CGST", v: g.outputCgst, sub: true },
     { l: "— Output SGST", v: g.outputSgst, sub: true },
     { l: "— Output IGST", v: g.outputIgst, sub: true },
+    ...(g.rcmPayable !== "0" ? [{ l: "GST under reverse charge (RCM)", v: g.rcmPayable }] : []),
     { l: "Input tax credit (ITC on purchases)", v: g.inputTax },
     { l: "— Input CGST", v: g.inputCgst, sub: true },
     { l: "— Input SGST", v: g.inputSgst, sub: true },

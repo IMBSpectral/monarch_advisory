@@ -89,6 +89,8 @@ export const createBillFn = createServerFn({ method: "POST" })
       vendorInvoiceNumber: z.string().optional(),
       notes: z.string().optional(),
       lines: z.array(billLineSchema).min(1),
+      reverseCharge: z.boolean().optional(),
+      itcEligible: z.boolean().optional(),
       postImmediately: z.boolean().optional(),
       idempotencyKey: z.string().uuid().optional(),
     }),
@@ -107,6 +109,8 @@ export const createBillFn = createServerFn({ method: "POST" })
         dueDate: data.dueDate,
         vendorInvoiceNumber: data.vendorInvoiceNumber,
         notes: data.notes,
+        reverseCharge: data.reverseCharge,
+        itcEligible: data.itcEligible,
         userId: principal.userId,
         lines: data.lines.map((l) => ({
           ...l,

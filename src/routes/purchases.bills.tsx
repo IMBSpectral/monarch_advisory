@@ -248,6 +248,8 @@ function NewBillDialog({
   const [billDate, setBillDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [dueDate, setDueDate] = useState("");
   const [postNow, setPostNow] = useState(false);
+  const [reverseCharge, setReverseCharge] = useState(false);
+  const [itcEligible, setItcEligible] = useState(true);
   const [lines, setLines] = useState<LineDraft[]>([emptyLine()]);
   const idem = useIdempotencyKey();
 
@@ -258,10 +260,11 @@ function NewBillDialog({
     for (const l of lines) {
       const net = (Number(l.quantity) || 0) * (Number(l.unitPriceRupees) || 0);
       const rate = l.taxRateId !== NO_TAX ? (taxById.get(l.taxRateId)?.ratePercent ?? 0) : 0;
-      total += net * (1 + rate / 100);
+      // Under reverse charge the vendor is paid the taxable value only.
+      total += reverseCharge ? net : net * (1 + rate / 100);
     }
     return Math.round(total * 100);
-  }, [lines, taxById]);
+  }, [lines, taxById, reverseCharge]);
 
   function reset() {
     setContactId("");
@@ -269,6 +272,8 @@ function NewBillDialog({
     setBillDate(new Date().toISOString().slice(0, 10));
     setDueDate("");
     setPostNow(false);
+    setReverseCharge(false);
+    setItcEligible(true);
     setLines([emptyLine()]);
     setError(null);
   }
@@ -299,6 +304,8 @@ function NewBillDialog({
           billDate,
           dueDate: dueDate || undefined,
           vendorInvoiceNumber: vendorInvoiceNumber || undefined,
+          reverseCharge,
+          itcEligible,
           postImmediately: postNow,
           idempotencyKey: idem.key,
           lines: usable.map((l) => ({
@@ -465,10 +472,33 @@ function NewBillDialog({
             </div>
 
             <div className="flex items-center justify-between rounded-md bg-muted/40 px-3 py-2">
-              <span className="text-sm text-muted-foreground">Estimated total</span>
+              <span className="text-sm text-muted-foreground">
+                {reverseCharge ? "Payable to vendor (ex-GST)" : "Estimated total"}
+              </span>
               <span className="font-semibold tabular-nums">
                 {formatMinor(String(estimateMinor))}
               </span>
+            </div>
+
+            <div className="flex flex-wrap gap-4">
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={reverseCharge}
+                  onChange={(e) => setReverseCharge(e.target.checked)}
+                  className="size-4"
+                />
+                Reverse charge (RCM)
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={itcEligible}
+                  onChange={(e) => setItcEligible(e.target.checked)}
+                  className="size-4"
+                />
+                ITC eligible
+              </label>
             </div>
 
             {canPost ? (

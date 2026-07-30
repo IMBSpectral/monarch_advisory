@@ -43,7 +43,7 @@ import {
   type PostingLine,
 } from "./ledger";
 import { assertApprovalSeparation } from "./approvals";
-import { splitInputGst } from "./gst";
+import { resolveRcmOutputAccount, splitInputGst } from "./gst";
 import {
   getDefaultWarehouseId,
   getTrackedItem,
@@ -78,6 +78,10 @@ export type CreateBillInput = {
   currency?: string;
   exchangeRate?: string;
   notes?: string;
+  /** Reverse charge: the org self-assesses the GST; the vendor is paid ex-tax. */
+  reverseCharge?: boolean;
+  /** Whether the input GST is claimable as ITC (false = blocked credit → a cost). */
+  itcEligible?: boolean;
   userId?: string | null;
 };
 
@@ -193,7 +197,11 @@ export async function createBill(
 
     const subtotal = computed.reduce((a, c) => a + c.lineTotalMinor, 0n);
     const taxTotal = computed.reduce((a, c) => a + c.taxAmountMinor, 0n);
-    const total = subtotal + taxTotal;
+    const reverseCharge = input.reverseCharge ?? false;
+    const itcEligible = input.itcEligible ?? true;
+    // Under reverse charge the vendor is paid the taxable value only; the GST is
+    // self-assessed by us, so it is not part of what we owe the vendor.
+    const total = reverseCharge ? subtotal : subtotal + taxTotal;
 
     if (total <= 0n) {
       throw new LedgerError(
@@ -227,6 +235,8 @@ export async function createBill(
         subtotalMinor: subtotal,
         taxTotalMinor: taxTotal,
         totalMinor: total,
+        reverseCharge,
+        itcEligible,
         notes: input.notes ?? null,
         createdByUserId: input.userId ?? null,
       })
@@ -362,16 +372,42 @@ export async function postBill(args: {
       );
     }
 
-    // Input tax paid is a reclaimable asset (ITC), split by place of supply into
-    // Input CGST/SGST (in-state vendor) or Input IGST (out-of-state) — separate
-    // from the output-tax liability so input and output reconcile independently.
+    // GST on the purchase. Four cases from (reverse charge?) × (ITC eligible?):
+    //  • eligible → the tax is a reclaimable asset, split into Input CGST/SGST/IGST
+    //  • blocked  → the tax is a cost, added to expense (no ITC asset)
+    //  • reverse charge additionally self-assesses the tax as an output liability
+    //    to the government (the vendor was paid ex-tax; totalMinor excludes it)
     if (bill.taxTotalMinor > 0n) {
-      const gst = await splitInputGst(tx, args.orgId, bill.contactId, bill.taxTotalMinor);
-      for (const g of gst) {
+      const tax = bill.taxTotalMinor;
+      if (bill.itcEligible) {
+        const gst = await splitInputGst(tx, args.orgId, bill.contactId, tax);
+        for (const g of gst) {
+          postings.push(
+            debit(g.accountId, g.amountMinor, {
+              contactId: bill.contactId,
+              memo: `Input ${g.label} — ${bill.billNumber}`,
+              currency: bill.currency,
+              exchangeRate: bill.exchangeRate,
+            }),
+          );
+        }
+      } else {
+        const expenseAcct = await resolveControlAccount(tx, args.orgId, "operating_expense");
         postings.push(
-          debit(g.accountId, g.amountMinor, {
+          debit(expenseAcct, tax, {
             contactId: bill.contactId,
-            memo: `Input ${g.label} — ${bill.billNumber}`,
+            memo: `Blocked ITC (GST) — ${bill.billNumber}`,
+            currency: bill.currency,
+            exchangeRate: bill.exchangeRate,
+          }),
+        );
+      }
+      if (bill.reverseCharge) {
+        const rcmAcct = await resolveRcmOutputAccount(tx, args.orgId);
+        postings.push(
+          credit(rcmAcct, tax, {
+            contactId: bill.contactId,
+            memo: `RCM GST — ${bill.billNumber}`,
             currency: bill.currency,
             exchangeRate: bill.exchangeRate,
           }),

@@ -865,6 +865,18 @@ export const bills = pgTable(
       .default(sql`0`),
     notes: text("notes"),
     /**
+     * Reverse charge (RCM): the recipient (this org), not the vendor, pays the GST
+     * to the government. The vendor is owed only the taxable value; the tax is
+     * self-assessed as an output liability and (if eligible) reclaimed as ITC.
+     */
+    reverseCharge: boolean("reverse_charge").notNull().default(false),
+    /**
+     * Whether the input GST is eligible for credit (ITC). A blocked credit
+     * (Section 17(5) — e.g. motor vehicles, food, personal use) is NOT reclaimable,
+     * so the tax is added to the expense as a cost instead of the ITC asset.
+     */
+    itcEligible: boolean("itc_eligible").notNull().default(true),
+    /**
      * True when a goods receipt (GRN) already received this bill's stock into
      * inventory against the clearing account. Posting then debits GRNI (clearing
      * it) instead of Inventory, and does not receive stock a second time.

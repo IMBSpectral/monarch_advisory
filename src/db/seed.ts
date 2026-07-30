@@ -245,6 +245,15 @@ const CHART: AccountSeed[] = [
     isSystem: true,
     parent: "2000",
   },
+  // Reverse-charge (RCM) GST self-assessed on purchases.
+  {
+    code: "2205",
+    name: "GST Payable (RCM)",
+    type: "liability",
+    subtype: "tax_payable",
+    isSystem: true,
+    parent: "2000",
+  },
   { code: "2210", name: "TDS Payable", type: "liability", subtype: "tax_payable", parent: "2000" },
   {
     code: "2300",

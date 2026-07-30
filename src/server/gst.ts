@@ -65,6 +65,21 @@ export function resolveGstInputAccounts(tx: DbOrTx, orgId: string): Promise<GstA
   });
 }
 
+/** The self-assessed reverse-charge (RCM) output liability account (code 2205). */
+export async function resolveRcmOutputAccount(tx: DbOrTx, orgId: string): Promise<string> {
+  const [row] = await tx
+    .select({ id: accounts.id })
+    .from(accounts)
+    .where(and(eq(accounts.orgId, orgId), eq(accounts.code, "2205")));
+  if (!row) {
+    throw new LedgerError(
+      "GST account GST Payable (RCM) (2205) is missing — provision the organisation's chart.",
+      "GST_ACCOUNT_MISSING",
+    );
+  }
+  return row.id;
+}
+
 /** Split a total tax into per-component posting lines (account + positive amount). */
 function buildLines(
   taxTotalMinor: bigint,

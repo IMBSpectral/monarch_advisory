@@ -357,6 +357,8 @@ export type GstSummary = {
   outputCgstMinor: bigint;
   outputSgstMinor: bigint;
   outputIgstMinor: bigint;
+  /** GST self-assessed under reverse charge on purchases — owed to the govt. */
+  rcmPayableMinor: bigint;
   /** Input tax credit availed on purchases in the period (all components). */
   inputTaxMinor: bigint;
   /** ITC split by place of supply. Sums (with any legacy unsplit) to inputTax. */
@@ -395,8 +397,10 @@ export async function getGstSummary(
 ): Promise<GstSummary> {
   const [taxRow] = (await tx.execute(sql`
     select
-      -- Net credit of the output-tax liability = output tax collected (all components).
-      coalesce(-sum(jl.amount_minor) filter (where a.subtype = 'tax_payable' and a.is_system), 0) as output_tax,
+      -- Net credit of the sales output-tax liability (excludes RCM 2205).
+      coalesce(-sum(jl.amount_minor) filter (where a.subtype = 'tax_payable' and a.is_system and a.code <> '2205'), 0) as output_tax,
+      -- Reverse-charge GST self-assessed on purchases (owed to the govt).
+      coalesce(-sum(jl.amount_minor) filter (where a.code = '2205'), 0) as rcm_payable,
       -- Output split by place of supply, from the component accounts.
       coalesce(-sum(jl.amount_minor) filter (where a.code = '2201'), 0) as output_cgst,
       coalesce(-sum(jl.amount_minor) filter (where a.code = '2202'), 0) as output_sgst,
@@ -430,6 +434,7 @@ export async function getGstSummary(
 
   const outputTaxMinor = toBig(taxRow?.output_tax);
   const inputTaxMinor = toBig(taxRow?.input_tax);
+  const rcmPayable = toBig(taxRow?.rcm_payable);
 
   return {
     from,
@@ -439,11 +444,13 @@ export async function getGstSummary(
     outputCgstMinor: toBig(taxRow?.output_cgst),
     outputSgstMinor: toBig(taxRow?.output_sgst),
     outputIgstMinor: toBig(taxRow?.output_igst),
+    rcmPayableMinor: rcmPayable,
     inputTaxMinor,
     inputCgstMinor: toBig(taxRow?.input_cgst),
     inputSgstMinor: toBig(taxRow?.input_sgst),
     inputIgstMinor: toBig(taxRow?.input_igst),
-    netPayableMinor: outputTaxMinor - inputTaxMinor,
+    // What's owed for the period: sales output + RCM self-assessment, less ITC.
+    netPayableMinor: outputTaxMinor + rcmPayable - inputTaxMinor,
   };
 }
 

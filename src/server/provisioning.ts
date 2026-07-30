@@ -96,6 +96,32 @@ export const DEFAULT_CHART: AccountDef[] = [
     isSystem: true,
     parent: "1100",
   },
+  // Input-GST (ITC) components. Place of supply on a purchase decides which:
+  // vendor in-state → CGST + SGST, out-of-state → IGST. Resolved by code.
+  {
+    code: "1141",
+    name: "Input CGST",
+    type: "asset",
+    subtype: "other_current_asset",
+    isSystem: true,
+    parent: "1100",
+  },
+  {
+    code: "1142",
+    name: "Input SGST",
+    type: "asset",
+    subtype: "other_current_asset",
+    isSystem: true,
+    parent: "1100",
+  },
+  {
+    code: "1143",
+    name: "Input IGST",
+    type: "asset",
+    subtype: "other_current_asset",
+    isSystem: true,
+    parent: "1100",
+  },
   {
     code: "1200",
     name: "Fixed Assets",

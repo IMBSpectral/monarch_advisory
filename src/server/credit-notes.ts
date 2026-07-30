@@ -39,11 +39,10 @@ import {
   debit,
   postJournalEntry,
   resolveControlAccount,
-  resolveInputTaxAccount,
   writeAudit,
   type PostingLine,
 } from "./ledger";
-import { splitOutputGst } from "./gst";
+import { splitInputGst, splitOutputGst } from "./gst";
 import {
   getCurrentAvgCost,
   getDefaultWarehouseId,
@@ -582,15 +581,17 @@ export async function postDebitNote(args: {
         );
     }
     if (taxTotal > 0n) {
-      // Debit note = purchase return, so it reverses reclaimed INPUT tax (ITC),
-      // crediting the Input GST Credit asset — not the output-tax liability.
-      const taxAcc = await resolveInputTaxAccount(tx, args.orgId);
-      postings.push(
-        credit(taxAcc, taxTotal, {
-          contactId: note.contactId,
-          memo: `Input tax reversal — ${note.debitNoteNumber}`,
-        }),
-      );
+      // Debit note = purchase return, so it reverses reclaimed INPUT tax (ITC) —
+      // crediting the same Input CGST/SGST/IGST components the purchase used.
+      const gst = await splitInputGst(tx, args.orgId, note.contactId, taxTotal);
+      for (const g of gst) {
+        postings.push(
+          credit(g.accountId, g.amountMinor, {
+            contactId: note.contactId,
+            memo: `Input ${g.label} reversal — ${note.debitNoteNumber}`,
+          }),
+        );
+      }
     }
 
     const entry = await postJournalEntry(

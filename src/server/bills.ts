@@ -39,11 +39,11 @@ import {
   debit,
   postJournalEntry,
   resolveControlAccount,
-  resolveInputTaxAccount,
   writeAudit,
   type PostingLine,
 } from "./ledger";
 import { assertApprovalSeparation } from "./approvals";
+import { splitInputGst } from "./gst";
 import {
   getDefaultWarehouseId,
   getTrackedItem,
@@ -362,20 +362,21 @@ export async function postBill(args: {
       );
     }
 
-    // Input tax paid is a reclaimable asset (ITC), posted to the dedicated
-    // Input GST Credit account — NOT the output-tax liability. Keeping the two
-    // apart is what lets input and output tax reconcile to GST returns
-    // independently.
+    // Input tax paid is a reclaimable asset (ITC), split by place of supply into
+    // Input CGST/SGST (in-state vendor) or Input IGST (out-of-state) — separate
+    // from the output-tax liability so input and output reconcile independently.
     if (bill.taxTotalMinor > 0n) {
-      const taxAccountId = await resolveInputTaxAccount(tx, args.orgId);
-      postings.push(
-        debit(taxAccountId, bill.taxTotalMinor, {
-          contactId: bill.contactId,
-          memo: `Input tax — ${bill.billNumber}`,
-          currency: bill.currency,
-          exchangeRate: bill.exchangeRate,
-        }),
-      );
+      const gst = await splitInputGst(tx, args.orgId, bill.contactId, bill.taxTotalMinor);
+      for (const g of gst) {
+        postings.push(
+          debit(g.accountId, g.amountMinor, {
+            contactId: bill.contactId,
+            memo: `Input ${g.label} — ${bill.billNumber}`,
+            currency: bill.currency,
+            exchangeRate: bill.exchangeRate,
+          }),
+        );
+      }
     }
 
     // One credit to AP for the full obligation, tagged with the vendor so aging works.

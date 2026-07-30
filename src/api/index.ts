@@ -266,9 +266,8 @@ export const fetchGstSummary = createServerFn({ method: "GET" })
 
     return withOrg(orgId, async (tx) => {
       const g = await getGstSummary(tx, orgId, data?.from ?? period.from, data?.to ?? period.to);
-      // Output tax is split by place of supply (CGST/SGST intra-state, IGST inter-
-      // state) from the component accounts. The input side isn't component-split
-      // yet (E3 slice 2), so ITC is still reported as a single figure.
+      // Both output tax and input tax credit are split by place of supply
+      // (CGST/SGST intra-state, IGST inter-state) from the component accounts.
       return {
         from: g.from,
         to: g.to,
@@ -278,6 +277,9 @@ export const fetchGstSummary = createServerFn({ method: "GET" })
         outputSgst: g.outputSgstMinor.toString(),
         outputIgst: g.outputIgstMinor.toString(),
         inputTax: g.inputTaxMinor.toString(),
+        inputCgst: g.inputCgstMinor.toString(),
+        inputSgst: g.inputSgstMinor.toString(),
+        inputIgst: g.inputIgstMinor.toString(),
         netPayable: g.netPayableMinor.toString(),
       };
     });

@@ -357,8 +357,12 @@ export type GstSummary = {
   outputCgstMinor: bigint;
   outputSgstMinor: bigint;
   outputIgstMinor: bigint;
-  /** Input tax credit availed on purchases in the period. */
+  /** Input tax credit availed on purchases in the period (all components). */
   inputTaxMinor: bigint;
+  /** ITC split by place of supply. Sums (with any legacy unsplit) to inputTax. */
+  inputCgstMinor: bigint;
+  inputSgstMinor: bigint;
+  inputIgstMinor: bigint;
   /** Output tax net of ITC — what is owed to the authority for the period. */
   netPayableMinor: bigint;
 };
@@ -375,12 +379,13 @@ export type GstSummary = {
  * shared account. TDS Payable shares the tax_payable subtype but is excluded by
  * `is_system`.
  *
- * Output tax is now split by place of supply into CGST/SGST (intra-state) and
- * IGST (inter-state) — read from the dedicated component accounts (codes
- * 2201/2202/2203) — while `outputTaxMinor` remains the total of all output-tax
- * system accounts (including any legacy pre-engine balance on 2200). Still a
- * ledger summary, not a filed return: reverse charge and ITC eligibility, and the
- * component split on the INPUT side, are not yet modelled (E3 slices 2-4).
+ * Both sides are now split by place of supply into CGST/SGST (intra-state) and
+ * IGST (inter-state), read from the dedicated component accounts — output on
+ * 2201/2202/2203, input (ITC) on 1141/1142/1143 — while `outputTaxMinor` /
+ * `inputTaxMinor` remain the totals of all output/input system accounts
+ * (including any legacy pre-engine balance on 2200/1140). Still a ledger summary,
+ * not a filed return: reverse charge and ITC eligibility are not yet modelled
+ * (E3 slices 3-4).
  */
 export async function getGstSummary(
   tx: DbOrTx,
@@ -396,8 +401,12 @@ export async function getGstSummary(
       coalesce(-sum(jl.amount_minor) filter (where a.code = '2201'), 0) as output_cgst,
       coalesce(-sum(jl.amount_minor) filter (where a.code = '2202'), 0) as output_sgst,
       coalesce(-sum(jl.amount_minor) filter (where a.code = '2203'), 0) as output_igst,
-      -- Net debit of the input-tax asset = ITC availed.
-      coalesce( sum(jl.amount_minor) filter (where a.subtype = 'other_current_asset' and a.is_system), 0) as input_tax
+      -- Net debit of the input-tax asset = ITC availed (all components).
+      coalesce( sum(jl.amount_minor) filter (where a.subtype = 'other_current_asset' and a.is_system), 0) as input_tax,
+      -- ITC split by place of supply, from the component accounts.
+      coalesce( sum(jl.amount_minor) filter (where a.code = '1141'), 0) as input_cgst,
+      coalesce( sum(jl.amount_minor) filter (where a.code = '1142'), 0) as input_sgst,
+      coalesce( sum(jl.amount_minor) filter (where a.code = '1143'), 0) as input_igst
     from journal_lines jl
     join journal_entries je on je.id = jl.entry_id
     join accounts a         on a.id = jl.account_id
@@ -431,6 +440,9 @@ export async function getGstSummary(
     outputSgstMinor: toBig(taxRow?.output_sgst),
     outputIgstMinor: toBig(taxRow?.output_igst),
     inputTaxMinor,
+    inputCgstMinor: toBig(taxRow?.input_cgst),
+    inputSgstMinor: toBig(taxRow?.input_sgst),
+    inputIgstMinor: toBig(taxRow?.input_igst),
     netPayableMinor: outputTaxMinor - inputTaxMinor,
   };
 }

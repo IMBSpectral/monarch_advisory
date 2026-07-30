@@ -75,6 +75,9 @@ function GST() {
     { l: "— Output SGST", v: g.outputSgst, sub: true },
     { l: "— Output IGST", v: g.outputIgst, sub: true },
     { l: "Input tax credit (ITC on purchases)", v: g.inputTax },
+    { l: "— Input CGST", v: g.inputCgst, sub: true },
+    { l: "— Input SGST", v: g.inputSgst, sub: true },
+    { l: "— Input IGST", v: g.inputIgst, sub: true },
     { l: "Net GST Payable", v: g.netPayable, hi: true },
   ];
 
@@ -108,11 +111,11 @@ function GST() {
             <span className="font-medium text-foreground">
               Indicative summary — not statutory-grade.
             </span>{" "}
-            Output GST is now split by place of supply into CGST/SGST (intra-state) and IGST
-            (inter-state) from the ledger. Still{" "}
-            <span className="font-medium text-foreground">not</span> a filed return: the input-side
-            (ITC) component split, reverse charge and ITC eligibility aren't modelled yet, and
-            statutory filing needs a GSP integration — use Download to hand the totals to your CA.
+            Both output tax and input tax credit are now split by place of supply into CGST/SGST
+            (intra-state) and IGST (inter-state) from the ledger. Still{" "}
+            <span className="font-medium text-foreground">not</span> a filed return: reverse charge
+            and ITC eligibility aren't modelled yet, and statutory filing needs a GSP integration —
+            use Download to hand the totals to your CA.
           </p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

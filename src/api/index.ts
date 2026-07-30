@@ -37,6 +37,8 @@ import {
 import {
   getBalanceSheet,
   getGstSummary,
+  getGstr1RateWise,
+  getHsnSummary,
   getCashFlow,
   getDashboardSummary,
   getDayBook,
@@ -265,9 +267,16 @@ export const fetchGstSummary = createServerFn({ method: "GET" })
     const period = await defaultPeriod();
 
     return withOrg(orgId, async (tx) => {
-      const g = await getGstSummary(tx, orgId, data?.from ?? period.from, data?.to ?? period.to);
+      const f = data?.from ?? period.from;
+      const t = data?.to ?? period.to;
+      const [g, rateWise, hsn] = await Promise.all([
+        getGstSummary(tx, orgId, f, t),
+        getGstr1RateWise(tx, orgId, f, t),
+        getHsnSummary(tx, orgId, f, t),
+      ]);
       // Both output tax and input tax credit are split by place of supply
-      // (CGST/SGST intra-state, IGST inter-state) from the component accounts.
+      // (CGST/SGST intra-state, IGST inter-state) from the component accounts;
+      // rateWise + hsn are the GSTR-1 detail, derived from the source documents.
       return {
         from: g.from,
         to: g.to,
@@ -282,6 +291,22 @@ export const fetchGstSummary = createServerFn({ method: "GET" })
         inputSgst: g.inputSgstMinor.toString(),
         inputIgst: g.inputIgstMinor.toString(),
         netPayable: g.netPayableMinor.toString(),
+        rateWise: rateWise.map((r) => ({
+          rateBps: r.rateBps,
+          rateName: r.rateName,
+          taxable: r.taxableMinor.toString(),
+          cgst: r.cgstMinor.toString(),
+          sgst: r.sgstMinor.toString(),
+          igst: r.igstMinor.toString(),
+          totalTax: r.totalTaxMinor.toString(),
+        })),
+        hsn: hsn.map((h) => ({
+          hsn: h.hsn,
+          description: h.description,
+          quantity: h.quantity,
+          taxable: h.taxableMinor.toString(),
+          tax: h.taxMinor.toString(),
+        })),
       };
     });
   });

@@ -455,6 +455,130 @@ export async function getGstSummary(
 }
 
 /* ────────────────────────────────────────────────────────────────────────────
+ * GSTR-1 detail — rate-wise outward supplies and an HSN/SAC summary. Derived from
+ * the source documents (the rate and HSN aren't in the ledger balances), covering
+ * every posted, non-void invoice in the period. Place of supply (customer state
+ * vs the org's) decides CGST+SGST vs IGST, exactly as the posting engine does.
+ * ──────────────────────────────────────────────────────────────────────────*/
+
+export type Gstr1RateRow = {
+  rateBps: number;
+  rateName: string;
+  taxableMinor: bigint;
+  cgstMinor: bigint;
+  sgstMinor: bigint;
+  igstMinor: bigint;
+  totalTaxMinor: bigint;
+};
+
+export async function getGstr1RateWise(
+  tx: DbOrTx,
+  orgId: string,
+  from: string,
+  to: string,
+): Promise<Gstr1RateRow[]> {
+  const rows = (await tx.execute(sql`
+    with lines as (
+      select
+        coalesce(tr.rate_bps, 0) as rate_bps,
+        coalesce(tr.name, 'No tax / exempt') as rate_name,
+        il.line_total_minor as taxable,
+        il.tax_amount_minor as tax,
+        -- intra-state when the place of supply is the org's own state (or unknown)
+        (coalesce(nullif(c.place_of_supply_code, ''), left(c.tax_registration_number, 2))
+          is not distinct from left(o.tax_registration_number, 2))
+          or coalesce(nullif(c.place_of_supply_code, ''), left(c.tax_registration_number, 2)) is null
+          as is_intra
+      from invoice_lines il
+      join invoices i      on i.id = il.invoice_id
+      join contacts c      on c.id = i.contact_id
+      join organizations o on o.id = i.org_id
+      left join tax_rates tr on tr.id = il.tax_rate_id
+      where i.org_id = ${orgId}
+        and i.journal_entry_id is not null
+        and i.status <> 'void'
+        and i.invoice_date between ${from} and ${to}
+    )
+    select rate_bps,
+           rate_name,
+           coalesce(sum(taxable), 0)::text as taxable,
+           coalesce(sum(tax) filter (where is_intra), 0)::text as intra_tax,
+           coalesce(sum(tax) filter (where not is_intra), 0)::text as inter_tax
+    from lines
+    group by rate_bps, rate_name
+    order by rate_bps
+  `)) as unknown as Array<{
+    rate_bps: number;
+    rate_name: string;
+    taxable: string;
+    intra_tax: string;
+    inter_tax: string;
+  }>;
+
+  return rows.map((r) => {
+    const intra = BigInt(r.intra_tax);
+    const inter = BigInt(r.inter_tax);
+    const cgst = intra / 2n; // CGST floors, SGST takes the remainder — sums exactly
+    return {
+      rateBps: r.rate_bps,
+      rateName: r.rate_name,
+      taxableMinor: BigInt(r.taxable),
+      cgstMinor: cgst,
+      sgstMinor: intra - cgst,
+      igstMinor: inter,
+      totalTaxMinor: intra + inter,
+    };
+  });
+}
+
+export type HsnRow = {
+  hsn: string;
+  description: string;
+  quantity: string;
+  taxableMinor: bigint;
+  taxMinor: bigint;
+};
+
+export async function getHsnSummary(
+  tx: DbOrTx,
+  orgId: string,
+  from: string,
+  to: string,
+): Promise<HsnRow[]> {
+  const rows = (await tx.execute(sql`
+    select
+      coalesce(nullif(it.hsn_sac_code, ''), '—') as hsn,
+      min(coalesce(it.name, il.description))      as description,
+      coalesce(sum(il.quantity), 0)::text         as quantity,
+      coalesce(sum(il.line_total_minor), 0)::text as taxable,
+      coalesce(sum(il.tax_amount_minor), 0)::text as tax
+    from invoice_lines il
+    join invoices i     on i.id = il.invoice_id
+    left join items it  on it.id = il.item_id
+    where i.org_id = ${orgId}
+      and i.journal_entry_id is not null
+      and i.status <> 'void'
+      and i.invoice_date between ${from} and ${to}
+    group by coalesce(nullif(it.hsn_sac_code, ''), '—')
+    order by sum(il.line_total_minor) desc
+  `)) as unknown as Array<{
+    hsn: string;
+    description: string;
+    quantity: string;
+    taxable: string;
+    tax: string;
+  }>;
+
+  return rows.map((r) => ({
+    hsn: r.hsn,
+    description: r.description,
+    quantity: r.quantity,
+    taxableMinor: BigInt(r.taxable),
+    taxMinor: BigInt(r.tax),
+  }));
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
  * Aging
  * ──────────────────────────────────────────────────────────────────────────*/
 

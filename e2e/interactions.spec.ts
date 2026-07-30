@@ -482,6 +482,11 @@ test.describe("reports — custom date range", () => {
     await expect(page.getByText("Output CGST")).toBeVisible();
     await expect(page.getByText("Output SGST")).toBeVisible();
     await expect(page.getByText("Output IGST")).toBeVisible();
+    // …plus the GSTR-1 detail: rate-wise + HSN tables.
+    await expect(
+      page.getByRole("heading", { name: /GSTR-1 — rate-wise outward supplies/ }),
+    ).toBeVisible();
+    await expect(page.getByRole("heading", { name: /HSN \/ SAC summary/ })).toBeVisible();
   });
 });
 

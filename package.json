@@ -24,6 +24,7 @@
     "db:test:import": "MONARCH_DB_ROLE=admin bun --env-file=.env src/db/test-import.ts",
     "db:test:gst": "MONARCH_DB_ROLE=admin bun --env-file=.env src/db/test-gst.ts",
     "db:test:rcm": "MONARCH_DB_ROLE=admin bun --env-file=.env src/db/test-rcm.ts",
+    "db:test:gstr1": "MONARCH_DB_ROLE=admin bun --env-file=.env src/db/test-gstr1.ts",
     "e2e": "playwright test"
   },
   "dependencies": {

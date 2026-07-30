@@ -699,6 +699,14 @@ async function main() {
 
   // A couple of SKUs use FIFO to exercise layer costing; the rest weighted-average.
   const FIFO_SKUS = new Set(["MON-LP-15", "MON-MN-27"]);
+  // HSN codes by product category, so the GSTR-1 HSN summary is meaningful.
+  const HSN_BY_CATEGORY: Record<string, string> = {
+    Peripherals: "84716060",
+    Displays: "85285900",
+    Laptops: "84713010",
+    Audio: "85183000",
+    Furniture: "94013000",
+  };
   const itemIdBySku = new Map<string, string>();
   for (const it of mockItems) {
     const [row] = await db
@@ -711,6 +719,7 @@ async function main() {
         unitOfMeasure: it.uom,
         salePriceMinor: toPaise(it.price),
         purchasePriceMinor: toPaise(it.cost),
+        hsnSacCode: HSN_BY_CATEGORY[it.category] ?? "84716060",
         valuationMethod: FIFO_SKUS.has(it.sku) ? "fifo" : "weighted_average",
         salesAccountId: acct("4100"),
         purchaseAccountId: acct("5100"),

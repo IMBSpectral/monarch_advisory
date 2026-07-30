@@ -6,6 +6,14 @@ import { PageHeader } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { fetchGstSummary } from "@/api";
 import { formatMinor } from "@/lib/money";
 import { downloadCsv } from "@/lib/export";
@@ -109,14 +117,11 @@ function GST() {
         <div className="flex items-start gap-2 rounded-lg border border-brand/20 bg-brand/5 px-4 py-3 text-sm">
           <Info className="mt-0.5 h-4 w-4 flex-shrink-0 text-brand" />
           <p className="text-muted-foreground">
-            <span className="font-medium text-foreground">
-              Indicative summary — not statutory-grade.
-            </span>{" "}
-            Both output tax and input tax credit are now split by place of supply into CGST/SGST
-            (intra-state) and IGST (inter-state) from the ledger. Still{" "}
-            <span className="font-medium text-foreground">not</span> a filed return: reverse charge
-            and ITC eligibility aren't modelled yet, and statutory filing needs a GSP integration —
-            use Download to hand the totals to your CA.
+            <span className="font-medium text-foreground">Return-ready figures.</span> Output tax
+            and ITC are split by place of supply (CGST/SGST intra-state, IGST inter-state), reverse
+            charge is self-assessed, blocked credits are excluded from ITC, and the GSTR-1 rate-wise
+            and HSN detail below is built from your invoices. Actual e-filing still needs a GSP
+            integration — export any table to hand it to your CA.
           </p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -179,6 +184,153 @@ function GST() {
                 </span>
               </div>
             ))}
+          </div>
+        </Card>
+
+        {/* GSTR-1 — rate-wise outward supplies */}
+        <Card className="p-6">
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <h3 className="font-semibold">GSTR-1 — rate-wise outward supplies</h3>
+              <p className="text-xs text-muted-foreground">
+                Taxable value and tax by rate, split by place of supply
+              </p>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              className="print:hidden"
+              onClick={() =>
+                downloadCsv(
+                  `gstr1-rate-wise_${g.from}_to_${g.to}.csv`,
+                  ["Rate", "Taxable value", "CGST", "SGST", "IGST", "Total tax"],
+                  g.rateWise.map((r) => [
+                    r.rateName,
+                    formatMinor(r.taxable),
+                    formatMinor(r.cgst),
+                    formatMinor(r.sgst),
+                    formatMinor(r.igst),
+                    formatMinor(r.totalTax),
+                  ]),
+                )
+              }
+            >
+              <Download className="mr-1.5 h-4 w-4" />
+              Export
+            </Button>
+          </div>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Rate</TableHead>
+                  <TableHead className="text-right">Taxable value</TableHead>
+                  <TableHead className="text-right">CGST</TableHead>
+                  <TableHead className="text-right">SGST</TableHead>
+                  <TableHead className="text-right">IGST</TableHead>
+                  <TableHead className="text-right">Total tax</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {g.rateWise.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">
+                      No outward supplies in this period.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  g.rateWise.map((r) => (
+                    <TableRow key={`${r.rateBps}-${r.rateName}`}>
+                      <TableCell>{r.rateName}</TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {formatMinor(r.taxable)}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {formatMinor(r.cgst)}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {formatMinor(r.sgst)}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {formatMinor(r.igst)}
+                      </TableCell>
+                      <TableCell className="text-right font-medium tabular-nums">
+                        {formatMinor(r.totalTax)}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </Card>
+
+        {/* HSN / SAC summary */}
+        <Card className="p-6">
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <h3 className="font-semibold">HSN / SAC summary</h3>
+              <p className="text-xs text-muted-foreground">
+                Outward supplies grouped by HSN/SAC code
+              </p>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              className="print:hidden"
+              onClick={() =>
+                downloadCsv(
+                  `gst-hsn-summary_${g.from}_to_${g.to}.csv`,
+                  ["HSN/SAC", "Description", "Quantity", "Taxable value", "Tax"],
+                  g.hsn.map((h) => [
+                    h.hsn,
+                    h.description,
+                    h.quantity,
+                    formatMinor(h.taxable),
+                    formatMinor(h.tax),
+                  ]),
+                )
+              }
+            >
+              <Download className="mr-1.5 h-4 w-4" />
+              Export
+            </Button>
+          </div>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>HSN/SAC</TableHead>
+                  <TableHead>Description</TableHead>
+                  <TableHead className="text-right">Qty</TableHead>
+                  <TableHead className="text-right">Taxable value</TableHead>
+                  <TableHead className="text-right">Tax</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {g.hsn.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
+                      No outward supplies in this period.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  g.hsn.map((h) => (
+                    <TableRow key={h.hsn}>
+                      <TableCell className="font-mono text-xs">{h.hsn}</TableCell>
+                      <TableCell className="max-w-xs truncate">{h.description}</TableCell>
+                      <TableCell className="text-right tabular-nums">{h.quantity}</TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {formatMinor(h.taxable)}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {formatMinor(h.tax)}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
           </div>
         </Card>
       </div>

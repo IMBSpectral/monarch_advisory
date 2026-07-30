@@ -195,6 +195,31 @@ const CHART: AccountSeed[] = [
     isSystem: true,
     parent: "2000",
   },
+  // Output-GST components (place of supply → CGST+SGST intra, IGST inter).
+  {
+    code: "2201",
+    name: "Output CGST",
+    type: "liability",
+    subtype: "tax_payable",
+    isSystem: true,
+    parent: "2000",
+  },
+  {
+    code: "2202",
+    name: "Output SGST",
+    type: "liability",
+    subtype: "tax_payable",
+    isSystem: true,
+    parent: "2000",
+  },
+  {
+    code: "2203",
+    name: "Output IGST",
+    type: "liability",
+    subtype: "tax_payable",
+    isSystem: true,
+    parent: "2000",
+  },
   { code: "2210", name: "TDS Payable", type: "liability", subtype: "tax_payable", parent: "2000" },
   {
     code: "2300",

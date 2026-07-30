@@ -266,13 +266,17 @@ export const fetchGstSummary = createServerFn({ method: "GET" })
 
     return withOrg(orgId, async (tx) => {
       const g = await getGstSummary(tx, orgId, data?.from ?? period.from, data?.to ?? period.to);
-      // No CGST/SGST/IGST split: place of supply isn't modelled, so fabricating
-      // one would be an incorrect tax figure. Report the real ledger totals only.
+      // Output tax is split by place of supply (CGST/SGST intra-state, IGST inter-
+      // state) from the component accounts. The input side isn't component-split
+      // yet (E3 slice 2), so ITC is still reported as a single figure.
       return {
         from: g.from,
         to: g.to,
         taxableSales: g.taxableSalesMinor.toString(),
         outputTax: g.outputTaxMinor.toString(),
+        outputCgst: g.outputCgstMinor.toString(),
+        outputSgst: g.outputSgstMinor.toString(),
+        outputIgst: g.outputIgstMinor.toString(),
         inputTax: g.inputTaxMinor.toString(),
         netPayable: g.netPayableMinor.toString(),
       };

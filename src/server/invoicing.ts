@@ -42,6 +42,7 @@ import {
   type PostingLine,
 } from "./ledger";
 import { assertApprovalSeparation } from "./approvals";
+import { splitOutputGst } from "./gst";
 import {
   commitStockOut,
   getDefaultWarehouseId,
@@ -401,15 +402,20 @@ export async function postInvoice(args: {
       );
     }
 
-    // Tax collected is a liability to the tax authority, not revenue.
+    // Tax collected is a liability to the tax authority, not revenue. It's split
+    // by place of supply: CGST + SGST for an intra-state sale, IGST inter-state.
     if (invoice.taxTotalMinor > 0n) {
-      const taxAccountId = await resolveControlAccount(tx, args.orgId, "tax_payable");
-      postings.push(
-        credit(taxAccountId, invoice.taxTotalMinor, {
-          contactId: invoice.contactId,
-          memo: `Output tax — ${invoice.invoiceNumber}`,
-        }),
-      );
+      const gst = await splitOutputGst(tx, args.orgId, invoice.contactId, invoice.taxTotalMinor);
+      for (const g of gst) {
+        postings.push(
+          credit(g.accountId, g.amountMinor, {
+            contactId: invoice.contactId,
+            memo: `Output ${g.label} — ${invoice.invoiceNumber}`,
+            currency: invoice.currency,
+            exchangeRate: invoice.exchangeRate,
+          }),
+        );
+      }
     }
 
     // ── Cost of goods sold ──────────────────────────────────────────────────

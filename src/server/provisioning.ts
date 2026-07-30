@@ -145,6 +145,32 @@ export const DEFAULT_CHART: AccountDef[] = [
     isSystem: true,
     parent: "2000",
   },
+  // Output-GST components. Place of supply decides which are used per invoice:
+  // intra-state → CGST + SGST, inter-state → IGST. Resolved by code in src/server/gst.ts.
+  {
+    code: "2201",
+    name: "Output CGST",
+    type: "liability",
+    subtype: "tax_payable",
+    isSystem: true,
+    parent: "2000",
+  },
+  {
+    code: "2202",
+    name: "Output SGST",
+    type: "liability",
+    subtype: "tax_payable",
+    isSystem: true,
+    parent: "2000",
+  },
+  {
+    code: "2203",
+    name: "Output IGST",
+    type: "liability",
+    subtype: "tax_payable",
+    isSystem: true,
+    parent: "2000",
+  },
   { code: "2210", name: "TDS Payable", type: "liability", subtype: "tax_payable", parent: "2000" },
 
   // Equity

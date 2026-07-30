@@ -66,11 +66,14 @@ function GST() {
     { name: "GSTR-9", desc: "Annual return", due: "31 Dec", status: "Pending", amount: "0" },
   ];
 
-  // Real ledger totals only — no CGST/SGST/IGST split, because place of supply
-  // isn't modelled and inventing components would be an incorrect tax figure.
-  const summary: { l: string; v: string; hi?: boolean }[] = [
+  // Output tax is split by place of supply (CGST/SGST intra-state, IGST inter-
+  // state), read from the component accounts. The three sum to Output GST.
+  const summary: { l: string; v: string; hi?: boolean; sub?: boolean }[] = [
     { l: "Taxable outward supplies", v: g.taxableSales },
     { l: "Output GST (on sales)", v: g.outputTax },
+    { l: "— Output CGST", v: g.outputCgst, sub: true },
+    { l: "— Output SGST", v: g.outputSgst, sub: true },
+    { l: "— Output IGST", v: g.outputIgst, sub: true },
     { l: "Input tax credit (ITC on purchases)", v: g.inputTax },
     { l: "Net GST Payable", v: g.netPayable, hi: true },
   ];
@@ -105,12 +108,11 @@ function GST() {
             <span className="font-medium text-foreground">
               Indicative summary — not statutory-grade.
             </span>{" "}
-            Figures are real ledger totals for the period (output tax on sales, input tax credit on
-            purchases), but this is <span className="font-medium text-foreground">not</span> a GST
-            computation: CGST/SGST/IGST classification, place of supply, reverse charge and ITC
-            eligibility aren't modelled yet, so no component split is shown. Statutory filing needs
-            a tax-determination engine and a GSP integration — use Download to hand the totals to
-            your CA.
+            Output GST is now split by place of supply into CGST/SGST (intra-state) and IGST
+            (inter-state) from the ledger. Still{" "}
+            <span className="font-medium text-foreground">not</span> a filed return: the input-side
+            (ITC) component split, reverse charge and ITC eligibility aren't modelled yet, and
+            statutory filing needs a GSP integration — use Download to hand the totals to your CA.
           </p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

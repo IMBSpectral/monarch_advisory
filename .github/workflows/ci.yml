@@ -79,6 +79,8 @@ jobs:
         run: bun run db:test:pos
       - name: CSV master-data import integration test
         run: bun run db:test:import
+      - name: GST place-of-supply split integration test
+        run: bun run db:test:gst
 
   # ── End-to-end: every module renders + the marquee flows post ──────────────
   e2e:

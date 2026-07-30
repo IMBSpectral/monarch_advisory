@@ -43,6 +43,7 @@ import {
   writeAudit,
   type PostingLine,
 } from "./ledger";
+import { splitOutputGst } from "./gst";
 import {
   getCurrentAvgCost,
   getDefaultWarehouseId,
@@ -273,15 +274,17 @@ export async function postCreditNote(args: {
           }),
         );
     }
-    // Reverse output tax.
+    // Reverse output tax — into the same CGST/SGST/IGST components the sale used.
     if (note.taxTotalMinor > 0n) {
-      const taxAcc = await resolveControlAccount(tx, args.orgId, "tax_payable");
-      postings.push(
-        debit(taxAcc, note.taxTotalMinor, {
-          contactId: note.contactId,
-          memo: `Output tax reversal — ${note.creditNoteNumber}`,
-        }),
-      );
+      const gst = await splitOutputGst(tx, args.orgId, note.contactId, note.taxTotalMinor);
+      for (const g of gst) {
+        postings.push(
+          debit(g.accountId, g.amountMinor, {
+            contactId: note.contactId,
+            memo: `Output ${g.label} reversal — ${note.creditNoteNumber}`,
+          }),
+        );
+      }
     }
 
     // Restock returned goods at current average cost, reversing COGS.

@@ -478,9 +478,10 @@ test.describe("reports — custom date range", () => {
     await expect(page.getByText("Output GST (on sales)")).toBeVisible();
     await expect(page.getByText("Input tax credit (ITC on purchases)")).toBeVisible();
     await expect(page.getByText("Net GST Payable")).toBeVisible();
-    // …and NO fabricated CGST/SGST/IGST component split.
-    await expect(page.getByText("Output CGST")).toHaveCount(0);
-    await expect(page.getByText("Output IGST")).toHaveCount(0);
+    // …now WITH the real place-of-supply split (CGST/SGST intra, IGST inter).
+    await expect(page.getByText("Output CGST")).toBeVisible();
+    await expect(page.getByText("Output SGST")).toBeVisible();
+    await expect(page.getByText("Output IGST")).toBeVisible();
   });
 });
 

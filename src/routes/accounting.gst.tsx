@@ -14,7 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { fetchGstSummary } from "@/api";
+import { fetchGstSummary, fetchGstr1Json } from "@/api";
 import { formatMinor } from "@/lib/money";
 import { downloadCsv } from "@/lib/export";
 import { ReportPeriodPicker } from "@/components/ReportPeriodPicker";
@@ -90,6 +90,17 @@ function GST() {
     { l: "Net GST Payable", v: g.netPayable, hi: true },
   ];
 
+  async function downloadGstr1Json() {
+    const json = await fetchGstr1Json({ data: { from: g.from, to: g.to } });
+    const blob = new Blob([JSON.stringify(json, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `GSTR1_${json.fp}_${json.gstin || "return"}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   const actions = (
     <div className="flex items-center gap-2 print:hidden">
       <ReportPeriodPicker
@@ -99,6 +110,10 @@ function GST() {
         to={g.to}
         onApply={({ preset, from, to }) => navigate({ search: { preset, from, to } })}
       />
+      <Button variant="outline" size="sm" onClick={downloadGstr1Json}>
+        <Download className="mr-1.5 h-4 w-4" />
+        GSTR-1 JSON
+      </Button>
       <Button variant="outline" size="sm" onClick={() => window.print()}>
         <Printer className="mr-1.5 h-4 w-4" />
         Print / PDF

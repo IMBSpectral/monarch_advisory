@@ -487,6 +487,8 @@ test.describe("reports — custom date range", () => {
       page.getByRole("heading", { name: /GSTR-1 — rate-wise outward supplies/ }),
     ).toBeVisible();
     await expect(page.getByRole("heading", { name: /HSN \/ SAC summary/ })).toBeVisible();
+    // …and the GSTN-schema JSON export (the portal upload file).
+    await expect(page.getByRole("button", { name: "GSTR-1 JSON" })).toBeVisible();
   });
 });
 

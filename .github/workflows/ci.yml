@@ -85,6 +85,8 @@ jobs:
         run: bun run db:test:rcm
       - name: GSTR-1 rate-wise & HSN report integration test
         run: bun run db:test:gstr1
+      - name: GSTR-1 JSON export integration test
+        run: bun run db:test:gstr1-json
 
   # ── End-to-end: every module renders + the marquee flows post ──────────────
   e2e:

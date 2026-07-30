@@ -50,6 +50,7 @@ import {
   getTrialBalance,
 } from "@/server/reports";
 import { getStockSummary } from "@/server/inventory";
+import { buildGstr1Json } from "@/server/gst-return";
 import { createAccount, createBankAccount, listContacts, listItems } from "@/server/entities";
 import { createInvoice, postInvoice } from "@/server/invoicing";
 import { LedgerError } from "@/server/ledger";
@@ -258,6 +259,20 @@ export const fetchBalanceSheet = createServerFn({ method: "GET" })
         retainedEarnings: bs.retainedEarningsMinor.toString(),
       };
     });
+  });
+
+/**
+ * The GSTR-1 return as GSTN-schema JSON — the file a taxpayer uploads to the GST
+ * portal (or gives their GSP). This does not file anything.
+ */
+export const fetchGstr1Json = createServerFn({ method: "GET" })
+  .validator(periodSchema)
+  .handler(async ({ data }) => {
+    const orgId = await currentOrgId();
+    const period = await defaultPeriod();
+    return withOrg(orgId, (tx) =>
+      buildGstr1Json(tx, orgId, data?.from ?? period.from, data?.to ?? period.to),
+    );
   });
 
 export const fetchGstSummary = createServerFn({ method: "GET" })
